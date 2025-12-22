@@ -14,7 +14,6 @@ struct Category: Identifiable {
     let iconName: String
     let eventCount: Int
     
-    // Sample data matching your image
     static let categories = [
         Category(name: "Team Building", iconName: "profile", eventCount: 12),
         Category(name: "Sports", iconName: "sport", eventCount: 8),
