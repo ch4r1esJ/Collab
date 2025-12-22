@@ -4,6 +4,7 @@
 //
 //  Created by Charles Janjgava on 12/21/25.
 //
+import Foundation
 
 // Services/MockAuthService.swift
 class MockAuthService: AuthServiceProtocol {
@@ -25,9 +26,10 @@ class MockAuthService: AuthServiceProtocol {
         
         return LoginResponse(
             token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock_token_",
-            userId: "user_123",
+            userId: 123,
             fullName: "Bacho Jokhadze",
             role: "Employee",
+            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
         )
     }
     
@@ -48,9 +50,10 @@ class MockAuthService: AuthServiceProtocol {
         
         return LoginResponse(
             token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock_token_)",
-            userId: "user_\(Int.random(in: 100...999))",
+            userId: Int.random(in: 100...999),
             fullName: fullName,
             role: "Employee",
-        )
+            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
+            )
     }
 }

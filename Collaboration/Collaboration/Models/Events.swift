@@ -41,29 +41,29 @@ extension Event {
 }
 
 // MARK: - Event Details (for Details screen)
-struct EventDetailsDto: Codable {
-    let id: Int
-    let title: String
-    let description: String
-    let eventTypeName: String
-    let startDateTime: String
-    let endDateTime: String
-    let location: String
-    let capacity: Int
-    let imageUrl: String?
-    let confirmedCount: Int
-    let waitlistedCount: Int
-    let isFull: Bool
-    let tags: [String]
-    let createdBy: String 
-}
-
-// MARK: - Event Type (for filters)
-struct EventTypeDto: Codable {
-    let id: Int
-    let name: String
-    let description: String?
-}
+//struct EventDetailsDto: Codable {
+//    let id: Int
+//    let title: String
+//    let description: String
+//    let eventTypeName: String
+//    let startDateTime: String
+//    let endDateTime: String
+//    let location: String
+//    let capacity: Int
+//    let imageUrl: String?
+//    let confirmedCount: Int
+//    let waitlistedCount: Int
+//    let isFull: Bool
+//    let tags: [String]
+//    let createdBy: String 
+//}
+//
+//// MARK: - Event Type (for filters)
+//struct EventTypeDto: Codable {
+//    let id: Int
+//    let name: String
+//    let description: String?
+//}
 
 extension EventDetailsDto {
     static let mockTrendingEvents: [EventDetailsDto] = [
@@ -76,7 +76,7 @@ extension EventDetailsDto {
             endDateTime: "2025-01-26T12:00:00Z",
             location: "Main Auditorium / Zoom",
             capacity: 50,
-            imageUrl: "https://picsum.photos/id/1/600/400", // Sample high-quality placeholder
+            imageUrl: "https://picsum.photos/id/1/600/400", 
             confirmedCount: 42,
             waitlistedCount: 0,
             isFull: false,

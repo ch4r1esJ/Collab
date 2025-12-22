@@ -39,7 +39,7 @@ class AuthViewModel: ObservableObject {
             TokenManager.shared.saveUserId(response.userId)
             
             let profile = User(
-                id: response.userId,
+                id: "\(response.userId)", 
                 email: email,
                 fullName: response.fullName,
                 role: response.role
@@ -78,7 +78,7 @@ class AuthViewModel: ObservableObject {
             TokenManager.shared.saveUserId(response.userId)
             
             let profile = User(
-                id: response.userId,
+                id: "\(response.userId)",
                 email: email,
                 fullName: response.fullName,
                 role: response.role

@@ -32,12 +32,12 @@ class TokenManager {
         return UserDefaults.standard.string(forKey: tokenKey)
     }
     
-    func saveUserId(_ userId: String) {
+    func saveUserId(_ userId: Int) {
         UserDefaults.standard.set(userId, forKey: userIdKey)
     }
     
-    func getUserId() -> String? {
-        return UserDefaults.standard.string(forKey: userIdKey)
+    func getUserId() -> Int? {
+        return UserDefaults.standard.integer(forKey: userIdKey)
     }
     
     func deleteToken() {

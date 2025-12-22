@@ -21,9 +21,10 @@ struct AuthResponse: Codable {
 
 struct LoginResponse: Codable {
     let token: String
-    let userId: String
+    let userId: Int
     let fullName: String
     let role: String
+    let expiresAt: String
 //    let expiresAt: String
 }
 
