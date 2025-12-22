@@ -8,10 +8,19 @@
 import SwiftUI
 
 struct HomeView: View {
-
+    
     var body: some View {
-        Text("View Event Details")
-
+        
+        ScrollView {
+            HeaderSection()
+            EventsSection()
+            CategorySection()
+            TrendingEventsSection(events: EventDetailsDto.mockTrendingEvents)
+            FAQSection()
         }
     }
+}
 
+#Preview {
+    HomeView()
+}

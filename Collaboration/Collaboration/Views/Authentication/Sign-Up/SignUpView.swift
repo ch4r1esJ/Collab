@@ -10,6 +10,7 @@ import Combine
 
 struct SignUpView: View {
     @StateObject private var viewModel = RegistrationViewModel()
+    @Environment(\.dismiss) var dismiss
     @State private var showPassword = false
     @State private var showConfirmPassword = false
 
@@ -242,7 +243,9 @@ struct SignUpView: View {
             Text("Already have an account?")
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
-            Button("Sign In") {}
+            Button("Sign In") {
+                dismiss()
+            }
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primary)
         }
