@@ -18,7 +18,7 @@ struct MainTabView: View {
                     Label("Home", systemImage: "house.fill")
                 }
             
-            BrowseView()
+            BrowseEventsScreen()
                 .tabItem {
                     Label("Browse", systemImage: "magnifyingglass")
                 }

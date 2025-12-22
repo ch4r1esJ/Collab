@@ -7,7 +7,7 @@
 
 
 // MARK: - Event List (for Browse screen)
-struct EventListDto: Codable {
+struct EventListDto: Codable, Identifiable {
     let id: Int
     let title: String
     let eventTypeName: String
@@ -21,7 +21,7 @@ struct EventListDto: Codable {
 }
 
 // MARK: - Event Details (for Details screen)
-struct EventDetailsDto: Codable {
+struct EventDetailsDto: Codable, Identifiable {
     let id: Int
     let title: String
     let description: String
@@ -39,8 +39,36 @@ struct EventDetailsDto: Codable {
 }
 
 // MARK: - Event Type (for filters)
-struct EventTypeDto: Codable {
+struct EventTypeDto: Codable, Identifiable {
     let id: Int
     let name: String
     let description: String?
 }
+
+
+
+struct CreateEventRequest: Codable {
+    let title: String
+    let description: String?
+    let eventTypeId: Int
+    let startDateTime: String
+    let endDateTime: String
+    let location: String
+    let capacity: Int
+    let imageUrl: String?
+    let tagIds: [Int]
+}
+
+struct UpdateEventRequest: Codable {
+    let title: String
+    let description: String?
+    let eventTypeId: Int
+    let startDateTime: String
+    let endDateTime: String
+    let location: String
+    let capacity: Int
+    let imageUrl: String?
+    let tagIds: [Int]
+}
+
+
