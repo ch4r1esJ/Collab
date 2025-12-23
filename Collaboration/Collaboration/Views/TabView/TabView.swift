@@ -23,7 +23,7 @@ struct MainTabView: View {
                     Label("Browse", systemImage: "magnifyingglass")
                 }
             
-            MyEventsView()
+            EventDetailsView()
                 .tabItem {
                     Label("My Events", systemImage: "calendar")
                 }
@@ -36,3 +36,6 @@ struct MainTabView: View {
     }
 }
 
+#Preview {
+    MainTabView()
+}

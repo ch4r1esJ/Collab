@@ -21,6 +21,11 @@
 			path = Browse;
 			sourceTree = "<group>";
 		};
+		E3D14D4F2EF92E740081EB88 /* My Events */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "My Events";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,6 +42,7 @@
 		5684DF212EF6C43400FA37AA = {
 			isa = PBXGroup;
 			children = (
+				E3D14D4F2EF92E740081EB88 /* My Events */,
 				E3D14A422EF87FB40081EB88 /* Browse */,
 				5684DF2C2EF6C43400FA37AA /* Collaboration */,
 				5684DF2B2EF6C43400FA37AA /* Products */,
@@ -69,6 +75,7 @@
 			fileSystemSynchronizedGroups = (
 				5684DF2C2EF6C43400FA37AA /* Collaboration */,
 				E3D14A422EF87FB40081EB88 /* Browse */,
+				E3D14D4F2EF92E740081EB88 /* My Events */,
 			);
 			name = Collaboration;
 			packageProductDependencies = (
