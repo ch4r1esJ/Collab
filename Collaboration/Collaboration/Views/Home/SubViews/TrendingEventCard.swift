@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TrendingEventCard: View {
-    let event: EventDetailsDto
+    let event: EventListDto
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

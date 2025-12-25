@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct LocationLabel: View {
@@ -22,5 +21,3 @@ struct LocationLabel: View {
         .foregroundColor(.secondary)
     }
 }
-
-

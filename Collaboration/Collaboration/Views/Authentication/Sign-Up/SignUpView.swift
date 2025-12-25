@@ -10,6 +10,7 @@ import Combine
 
 struct SignUpView: View {
     @StateObject private var viewModel = RegistrationViewModel()
+    @EnvironmentObject var coordinator: AppCoordinator
     @Environment(\.dismiss) var dismiss
     @State private var showPassword = false
     @State private var showConfirmPassword = false
@@ -31,19 +32,21 @@ struct SignUpView: View {
                 loadingOverlay
             }
         }
-        .alert("Error", isPresented: Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.errorMessage = nil } }
-        )) {
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
         .alert("Success", isPresented: Binding(
             get: { viewModel.successMessage != nil },
-            set: { if !$0 { viewModel.successMessage = nil } }
+            set: { _ in viewModel.successMessage = nil }
         )) {
-            Button("OK") { viewModel.successMessage = nil }
+            Button("OK") {
+                if viewModel.registrationSuccessful {
+                    dismiss()
+                }
+                viewModel.successMessage = nil
+            }
         } message: {
             Text(viewModel.successMessage ?? "")
         }
@@ -51,7 +54,7 @@ struct SignUpView: View {
             if viewModel.timeRemaining > 0 && viewModel.isOTPSent {
                 viewModel.timeRemaining -= 1
             }
-        }
+        }.navigationBarBackButtonHidden(true)
     }
     
     private var headerSection: some View {
@@ -82,7 +85,7 @@ struct SignUpView: View {
                 otpSection
             }
             
-//            RegistrationDepartmentPicker(selectedDepartment: $viewModel.department)
+//            RegistrationDepartmentPicker(selectedDepartment: $viewModel.department.rawValue)
             
             RegistrationPasswordField(
                 password: $viewModel.password,
@@ -218,7 +221,11 @@ struct SignUpView: View {
     }
     
     private var createAccountButton: some View {
-        Button(action: { Task { await viewModel.register() } }) {
+        Button(action: {
+            Task {
+                await viewModel.register()
+            }
+        }) {
             if viewModel.isLoading {
                 ProgressView()
                     .tint(.white)
@@ -263,4 +270,3 @@ struct SignUpView: View {
         }
     }
 }
-

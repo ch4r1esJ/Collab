@@ -8,15 +8,31 @@
 import SwiftUI
 
 struct MainTabView: View {
-//    @EnvironmentObject var authViewModel: AuthViewModel
-//    @EnvironmentObject var coordinator: AppCoordinator
+    @EnvironmentObject var coordinator: AppCoordinator
+    @StateObject private var homeViewModel = HomeViewModel()
     
     var body: some View {
         TabView {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
+            NavigationStack(path: $coordinator.path) {
+                HomeView(viewModel: homeViewModel)
+                    .navigationDestination(for: AppRoute.self) { route in
+                        switch route {
+                        case .allEvents:
+                            EventsList(viewModel: homeViewModel)
+                        case .signUp:
+                            SignUpView()
+                        case .login:
+                            SignInView()
+                        case .home:
+                            EmptyView()
+                        case .eventDetails(let eventId):
+                            EventDetailsView(eventId: eventId)
+                        }
+                    }
+            }
+            .tabItem {
+                Label("Home", systemImage: "house.fill")
+            }
             
             BrowseEventsScreen()
                 .tabItem {
@@ -32,7 +48,11 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Updates", systemImage: "bell.fill")
                 }
+            
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person")
+                }
         }
     }
 }
-

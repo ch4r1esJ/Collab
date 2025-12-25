@@ -5,11 +5,11 @@
 //  Created by Rize on 22.12.25.
 //
 
-
 import SwiftUI
 
 struct CategoryDetailScreen: View {
-    let category: EventTypeDto
+    let category: CategoryDto
+    
     @StateObject private var viewModel = CategoryEventsVM()
     @Environment(\.dismiss) private var dismiss
     
@@ -29,7 +29,7 @@ struct CategoryDetailScreen: View {
                     }
                 )
             }
-            .navigationTitle(category.name)
+            .navigationTitle(category.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

@@ -8,16 +8,30 @@
 import SwiftUI
 
 struct CategorySection: View {
-    let categories = [
-        Category(name: "Team Building", iconName: "profile", eventCount: 12),
-        Category(name: "Sports", iconName: "sport", eventCount: 8),
-        Category(name: "Workshops", iconName: "workshop", eventCount: 18),
-        Category(name: "Happy Fridays", iconName: "friday", eventCount: 4),
-        Category(name: "Cultural", iconName: "laugh", eventCount: 6),
-        Category(name: "Wellness", iconName: "wellness", eventCount: 9)
-    ]
+    let categories: [CategoryDto]
     
     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+    
+    private func iconForCategory(_ title: String) -> String {
+        switch title.lowercased() {
+        case "team building":
+            return "profile"
+        case "sports":
+            return "sport"
+        case "workshop", "training":
+            return "workshop"
+        case "social":
+            return "friday"
+        case "cultural":
+            return "laugh"
+        case "wellness":
+            return "wellness"
+        case "networking":
+            return "profile"
+        default:
+            return "profile"
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,14 +41,13 @@ struct CategorySection: View {
             
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(categories) { category in
-                    CategoryCard(category: category)
+                    CategoryCard(
+                        category: category,
+                        iconName: iconForCategory(category.title)
+                    )
                 }
             }
         }
         .padding(.horizontal)
     }
-}
-
-#Preview {
-    CategorySection()
 }

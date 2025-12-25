@@ -5,47 +5,54 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct CategoryFilterRow: View {
-    let categories: [EventTypeDto]
+    let categories: [CategoryDto]
     @Binding var activeCategory: Int?
     let onSelect: (Int?) -> Void
-    let onLongPress: ((EventTypeDto) -> Void)?
-    
-    init(
-        categories: [EventTypeDto],
-        activeCategory: Binding<Int?>,
-        onSelect: @escaping (Int?) -> Void,
-        onLongPress: ((EventTypeDto) -> Void)? = nil
-    ) {
-        self.categories = categories
-        self._activeCategory = activeCategory
-        self.onSelect = onSelect
-        self.onLongPress = onLongPress
-    }
+    let onLongPress: ((CategoryDto) -> Void)?
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                CategoryChip(
-                    name: "All",
+                CategoryPill(
+                    title: "All",
                     isActive: activeCategory == nil,
-                    onTap: { onSelect(nil) }
+                    action: { onSelect(nil) }
                 )
                 
                 ForEach(categories, id: \.id) { category in
-                    CategoryChip(
-                        name: category.name,
+                    CategoryPill(
+                        title: category.title,
                         isActive: activeCategory == category.id,
-                        onTap: { onSelect(category.id) },
-                        onLongTap: onLongPress != nil ? { onLongPress?(category) } : nil  // ← onLongTap (არა onLongPress)
+                        action: { onSelect(category.id) }
                     )
+                    .onLongPressGesture {
+                        onLongPress?(category)
+                    }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .padding(.bottom, 16)
+    }
+}
+
+struct CategoryPill: View {
+    let title: String
+    let isActive: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(isActive ? .white : .black)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(isActive ? Color.black : Color(red: 242/255, green: 242/255, blue: 247/255))
+                .cornerRadius(20)
+        }
     }
 }

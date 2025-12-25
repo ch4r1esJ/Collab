@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct EventDetails: View {
@@ -16,9 +15,9 @@ struct EventDetails: View {
             CategoryStatusRow(
                 categoryName: event.eventTypeName,
                 statusInfo: EventStatusProvider.statusInfo(
-                    isFull: event.isFull,
-                    confirmedCount: event.confirmedCount,
-                    capacity: event.capacity
+                    isFull: event.availableSlots == 0,
+                    confirmedCount: event.currentCapacity, 
+                    capacity: event.maxCapacity
                 )
             )
             

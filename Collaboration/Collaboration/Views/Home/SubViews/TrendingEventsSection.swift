@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TrendingEventsSection: View {
-    let events: [EventDetailsDto]
+    let events: [EventListDto]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -34,8 +34,4 @@ struct TrendingEventsSection: View {
             }
         }
     }
-}
-
-#Preview {
-    TrendingEventsSection(events: EventDetailsDto.mockTrendingEvents)
 }

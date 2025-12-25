@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import Foundation
 import SwiftUI
 
@@ -13,7 +12,19 @@ class MockAPIService {
     static let shared = MockAPIService()
     private let mockData = MockDataManager.shared
     
-    private init() {}
+    private static var registeredUsers: [String: RegisteredUser] = [:]
+    
+    private static var userEventRegistrations: Set<Int> = []
+    
+    private struct RegisteredUser {
+        let email: String
+        let password: String
+        let firstName: String
+        let lastName: String
+        let userId: Int
+    }
+    
+    public init() {}
     
     private func simulateNetworkDelay() async throws {
         try await Task.sleep(nanoseconds: UInt64.random(in: 500_000_000...1_500_000_000))
@@ -22,35 +33,43 @@ class MockAPIService {
     func login(email: String, password: String) async throws -> LoginResponse {
         try await simulateNetworkDelay()
         
-        guard let user = mockData.mockUsers.first(where: { $0.email == email }) else {
+        let registeredUser = Self.registeredUsers[email]
+        
+        let existingMockUser = mockData.mockUsers.first(where: { $0.email == email })
+        
+        if let registeredUser = registeredUser {
+            guard registeredUser.password == password else {
+                throw APIError.unauthorized
+            }
+            
+            return LoginResponse(
+                token: "mock_jwt_token_\(registeredUser.userId)_\(UUID().uuidString)",
+                userId: registeredUser.userId,
+                email: registeredUser.email,
+                fullName: "\(registeredUser.firstName) \(registeredUser.lastName)",
+                department: "Engineering",
+                isAdmin: false,
+                expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
+            )
+        }
+        
+        guard let mockUser = existingMockUser else {
             throw APIError.unauthorized
         }
         
-        if password.isEmpty {
-            throw APIError.badRequest(APIErrorResponse(
-                message: "Password is required",
-                errorCode: "VALIDATION_ERROR",
-                statusCode: 400,
-                timestamp: ISO8601DateFormatter().string(from: Date()),
-                details: ["Password": ["Password cannot be empty"]]
-            ))
-        }
-        
         return LoginResponse(
-            token: "mock_jwt_token_\(user.id)_\(UUID().uuidString)",
-            userId: user.id,
-            fullName: user.fullName,
-            role: user.role,
+            token: "mock_jwt_token_\(mockUser.id)_\(UUID().uuidString)",
+            userId: mockUser.id,
+            email: mockUser.email,
+            fullName: mockUser.fullName,
+            department: mockUser.department,
+            isAdmin: mockUser.isAdmin,
             expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
         )
     }
     
-    func register(email: String, password: String, fullName: String) async throws -> LoginResponse {
+    func register(email: String, password: String, firstName: String, lastName: String) async throws {
         try await simulateNetworkDelay()
-        
-        if mockData.mockUsers.contains(where: { $0.email == email }) {
-            throw APIError.conflict("User with this email already exists")
-        }
         
         if email.isEmpty || !email.contains("@") {
             throw APIError.badRequest(APIErrorResponse(
@@ -58,7 +77,7 @@ class MockAPIService {
                 errorCode: "VALIDATION_ERROR",
                 statusCode: 400,
                 timestamp: ISO8601DateFormatter().string(from: Date()),
-                details: ["Email": ["Valid email is required"]]
+                details: ["email": ["Valid email is required"]]
             ))
         }
         
@@ -68,25 +87,45 @@ class MockAPIService {
                 errorCode: "VALIDATION_ERROR",
                 statusCode: 400,
                 timestamp: ISO8601DateFormatter().string(from: Date()),
-                details: ["Password": ["Password must be at least 8 characters"]]
+                details: ["password": ["Password must be at least 8 characters"]]
             ))
         }
         
-        let newUserId = (mockData.mockUsers.map { $0.id }.max() ?? 0) + 1
+        if Self.registeredUsers[email] != nil {
+            throw APIError.conflict("User with this email already exists")
+        }
         
-        return LoginResponse(
-            token: "mock_jwt_token_\(newUserId)_\(UUID().uuidString)",
-            userId: newUserId,
-            fullName: fullName,
-            role: "Employee",
-            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
+        if mockData.mockUsers.contains(where: { $0.email == email }) {
+            throw APIError.conflict("User with this email already exists")
+        }
+        
+        let newUserId = (mockData.mockUsers.map { $0.id }.max() ?? 0) + 1
+        Self.registeredUsers[email] = RegisteredUser(
+            email: email,
+            password: password,
+            firstName: firstName,
+            lastName: lastName,
+            userId: newUserId
         )
+    }
+    
+    func sendPasswordResetLink(email: String) async throws {
+        try await simulateNetworkDelay()
+        
+        guard mockData.mockUsers.contains(where: { $0.email == email }) else {
+            throw APIError.notFound("User with this email not found")
+        }
     }
     
     func getCurrentUser() async throws -> UserProfileDto {
         try await simulateNetworkDelay()
         
         return mockData.mockUsers[0]
+    }
+    
+    func getUpcomingEvents() async throws -> [EventListDto] {
+        try await simulateNetworkDelay()
+        return mockData.getUpcomingEvents()
     }
     
     func getEvents(
@@ -112,13 +151,13 @@ class MockAPIService {
         }
         
         if let onlyAvailable = onlyAvailable, onlyAvailable {
-            events = events.filter { !$0.isFull }
+            events = events.filter { $0.availableSlots > 0 }
         }
         
         return events
     }
     
-    func getEventDetails(id: Int) async throws -> EventDetailsDto {
+    func getEventDetails(id: Int) async throws -> EventListDto {
         try await simulateNetworkDelay()
         
         guard let event = mockData.getEventDetails(id: id) else {
@@ -128,17 +167,12 @@ class MockAPIService {
         return event
     }
     
-    func getUpcomingEvents() async throws -> [EventListDto] {
-        try await simulateNetworkDelay()
-        return mockData.getUpcomingEvents()
-    }
-    
     func getEventTypes() async throws -> [EventTypeDto] {
         try await simulateNetworkDelay()
         return mockData.mockEventTypes
     }
     
-    func createEvent(request: CreateEventRequest) async throws -> EventDetailsDto {
+    func createEvent(request: CreateEventRequest) async throws -> EventListDto {
         try await simulateNetworkDelay()
         
         if request.title.isEmpty {
@@ -151,7 +185,7 @@ class MockAPIService {
             ))
         }
         
-        if request.capacity < 1 {
+        if request.minCapacity < 1 {
             throw APIError.badRequest(APIErrorResponse(
                 message: "Validation failed",
                 errorCode: "VALIDATION_ERROR",
@@ -162,30 +196,52 @@ class MockAPIService {
         }
         
         let newId = (mockData.mockEvents.map { $0.id }.max() ?? 0) + 1
+        let eventType = mockData.mockEventTypes.first(where: { $0.id == request.eventTypeId })
         
-        return EventDetailsDto(
+        return EventListDto(
             id: newId,
             title: request.title,
             description: request.description ?? "No description provided",
-            eventTypeName: mockData.mockEventTypes.first(where: { $0.id == request.eventTypeId })?.name ?? "Unknown",
+            eventTypeName: "In-Person",
+            categoryId: request.eventTypeId,
+            categoryTitle: eventType?.name ?? "Unknown",
             startDateTime: request.startDateTime,
             endDateTime: request.endDateTime,
+            registrationDeadline: request.registrationDeadline ?? request.startDateTime,
             location: request.location,
-            capacity: request.capacity,
-            imageUrl: request.imageUrl,
-            confirmedCount: 0,
-            waitlistedCount: 0,
-            isFull: false,
+            venueName: request.venueName ?? "Main Venue",
+            currentCapacity: 0,
+            maxCapacity: request.maxCapacity,
+            availableSlots: request.maxCapacity,
+            eventStatus: "Available",
+            autoApprove: true,
+            imageUrl: request.imageUrl ?? "https://example.com/default-event.jpg",
+            isVisible: true,
             tags: [],
-            createdBy: "Current User"
+            createdByName: "Current User",
+            speakers: [],
+            agenda: []
         )
     }
     
-    func registerForEvent(eventId: Int, userId: Int) async throws -> RegistrationDto {
+    func checkRegistration(eventId: Int) async throws -> RegistrationCheckDto {
+        try await simulateNetworkDelay()
+        
+        let isRegistered = Self.userEventRegistrations.contains(eventId) ||
+        mockData.mockUserRegistrations.contains(where: { $0.eventId == eventId })
+        
+        return RegistrationCheckDto(isRegistered: isRegistered)
+    }
+    
+    func registerForEvent(eventId: Int, userId: Int) async throws -> RegistrationResponse {
         try await simulateNetworkDelay()
         
         guard let event = mockData.mockEvents.first(where: { $0.id == eventId }) else {
             throw APIError.notFound("Event not found")
+        }
+        
+        if Self.userEventRegistrations.contains(eventId) {
+            throw APIError.conflict("Already registered for this event")
         }
         
         if mockData.mockUserRegistrations.contains(where: { $0.eventId == eventId }) {
@@ -195,22 +251,40 @@ class MockAPIService {
         let status: String
         let position: Int?
         
-        if event.confirmedCount < event.capacity {
+        if event.availableSlots > 0 {
             status = "Confirmed"
             position = nil
         } else {
             status = "Waitlisted"
-            position = event.confirmedCount - event.capacity + 1
+            position = event.currentCapacity - event.maxCapacity + 1
         }
         
-        return RegistrationDto(
-            id: Int.random(in: 100...999),
+        let registrationId = Int.random(in: 100...999)
+        
+        let registration = RegistrationDto(
+            id: registrationId,
             eventId: eventId,
+            eventTitle: event.title,
             userId: userId,
-            status: status,
-            registeredAt: ISO8601DateFormatter().string(from: Date()),
-            position: position
+            userFullName: "Test User",
+            statusName: status,
+            registeredAt: ISO8601DateFormatter().string(from: Date())
         )
+        
+        Self.userEventRegistrations.insert(eventId)
+        
+        return RegistrationResponse(
+            message: "Successfully registered for the event",
+            registrationId: registrationId,
+            status: status,
+            registration: registration
+        )
+    }
+    
+    func unregisterFromEvent(eventId: Int) async throws {
+        try await simulateNetworkDelay()
+        
+        Self.userEventRegistrations.remove(eventId)
     }
     
     func cancelRegistration(id: Int) async throws {
@@ -249,13 +323,19 @@ class MockAPIService {
         ]
     }
     
-    func sendPasswordResetLink(email: String) async throws {
+    func getCategories() async throws -> [CategoryDto] {
         try await simulateNetworkDelay()
         
-        guard mockData.mockUsers.contains(where: { $0.email == email }) else {
-            throw APIError.notFound("User with this email not found")
-        }
-        
+        return [
+            CategoryDto(id: 1, title: "Team Building", totalEvents: 12),
+            CategoryDto(id: 2, title: "Sports", totalEvents: 8),
+            CategoryDto(id: 3, title: "Workshop", totalEvents: 18),
+            CategoryDto(id: 4, title: "Training", totalEvents: 15),
+            CategoryDto(id: 5, title: "Social", totalEvents: 10),
+            CategoryDto(id: 6, title: "Cultural", totalEvents: 6),
+            CategoryDto(id: 7, title: "Wellness", totalEvents: 9),
+            CategoryDto(id: 8, title: "Networking", totalEvents: 5)
+        ]
     }
 }
 

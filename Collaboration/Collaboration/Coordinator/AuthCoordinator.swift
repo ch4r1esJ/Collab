@@ -11,9 +11,9 @@ struct AuthView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     
     var body: some View {
-            NavigationStack {
-                SignInView()
-            }
-            .environmentObject(coordinator)
+        NavigationStack {
+            SignInView()
         }
+        .environmentObject(coordinator)
+    }
 }

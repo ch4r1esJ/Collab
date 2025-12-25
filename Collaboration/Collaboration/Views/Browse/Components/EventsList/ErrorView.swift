@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct ErrorStateView: View {
@@ -16,23 +15,24 @@ struct ErrorStateView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 50))
-                .foregroundColor(.red)
+                .foregroundColor(.orange)
             
-            Text("Something went wrong")
-                .font(.headline)
+            Text("Oops!")
+                .font(.title2)
+                .fontWeight(.semibold)
             
             Text(message)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .padding(.horizontal)
             
             Button(action: onRetry) {
-                HStack(spacing: 8) {
+                HStack {
                     Image(systemName: "arrow.clockwise")
-                    Text("Retry")
+                    Text("Try Again")
                 }
-                .fontWeight(.semibold)
+                .font(.headline)
                 .foregroundColor(.white)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
@@ -40,6 +40,7 @@ struct ErrorStateView: View {
                 .cornerRadius(10)
             }
         }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-

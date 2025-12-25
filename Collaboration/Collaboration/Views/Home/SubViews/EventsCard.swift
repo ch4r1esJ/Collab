@@ -8,38 +8,54 @@
 import SwiftUI
 
 struct EventCard: View {
-    let event: Event
+    @EnvironmentObject var coordinator: AppCoordinator
+    let event: EventListDto
+    var isWaitlisted: Bool = false
     
     var body: some View {
+        Button(action: {
+            coordinator.navigate(to: .eventDetails(event.id))
+        }) {
+            cardContent
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var cardContent: some View {
         HStack(alignment: .top, spacing: 16) {
-            EventDateView(month: event.month, day: event.day)
-            .frame(width: 50)
+            EventDateView(month: formattedMonth, day: formattedDay)
+                .frame(width: 50)
             
             VStack(alignment: .leading, spacing: 12) {
-                EventTitleView(title: event.title, isWaitlisted: event.isWaitlisted)
+                EventTitleView(title: event.title)
                 
+                TimeView(time: formattedTime, location: event.location)
+                    .font(.system(size: 14, weight: .light))
                 
-                TimeView(time: event.time, location: event.location)
-                .font(.system(size: 14, weight: .light))
-                
-                Text(event.description)
-                    .font(.system(size: 15, weight: .light))
-                    .lineLimit(2)
+                if !event.description.isEmpty {
+                    Text(event.description)
+                        .font(.system(size: 15, weight: .light))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
                 
                 HStack {
-                    Label("\(event.registeredCount) registered • \(event.spotsLeft)", systemImage: "person.2")
-                        .font(.system(size: 13, weight: .light))
-                        
+                    Label {
+                        Text("\(event.currentCapacity) registered • \(spotsLeftText)")
+                    } icon: {
+                        Image(systemName: "person.2")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.system(size: 13, weight: .light))
+                    
                     Spacer()
                     
-                    Button(action: {}) {
-                        HStack(spacing: 4) {
-                            Text("View Details")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.black)
+                    HStack(spacing: 4) {
+                        Text("View Details")
+                        Image(systemName: "arrow.right")
                     }
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.blue)
                 }
                 .padding(.top, 4)
             }
@@ -49,6 +65,51 @@ struct EventCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color(.systemGray5), lineWidth: 1)
         )
+        .overlay(alignment: .topTrailing) {
+            if isWaitlisted {
+                Text("Waitlisted")
+                    .font(.system(size: 11, weight: .bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
+                    .padding([.top, .trailing], 12)
+            }
+        }
+    }
+    
+    private var spotsLeftText: String {
+        if event.availableSlots == 0 {
+            return "Full"
+        } else {
+            return "\(event.availableSlots) spot\(event.availableSlots == 1 ? "" : "s") left"
+        }
+    }
+    
+    private var eventDate: Date {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.timeZone = TimeZone.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: event.startDateTime) ?? Date()
+    }
+    
+    private var formattedMonth: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM"
+        return formatter.string(from: eventDate)
+    }
+    
+    private var formattedDay: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd"
+        return formatter.string(from: eventDate)
+    }
+    
+    private var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: eventDate)
     }
 }
 
@@ -68,22 +129,12 @@ struct EventDateView: View {
 
 struct EventTitleView: View {
     var title: String
-    var isWaitlisted: Bool
     
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 18, weight: .medium))
-            
-            if isWaitlisted {
-                Text("Waitlisted")
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-            }
-        }
+        Text(title)
+            .font(.system(size: 18, weight: .medium))
+            .padding(.trailing, 70)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -109,8 +160,4 @@ struct TimeView: View {
             }
         }
     }
-}
-
-#Preview {
-    EventCard(event: Event.mockEvent)
 }

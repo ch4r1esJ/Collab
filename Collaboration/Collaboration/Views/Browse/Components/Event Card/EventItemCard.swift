@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct EventItemCard: View {

@@ -5,12 +5,11 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import SwiftUI
 
 struct BrowseEventsScreen: View {
     @StateObject private var viewModel = BrowseEventsVM()
-    @State private var selectedCategoryForDetail: EventTypeDto?
+    @State private var selectedCategoryForDetail: CategoryDto?
     
     var body: some View {
         NavigationView {
@@ -26,7 +25,7 @@ struct BrowseEventsScreen: View {
                     categories: viewModel.categories,
                     activeCategory: $viewModel.activeCategory,
                     onSelect: viewModel.selectCategory,
-                    onLongPress: { (category: EventTypeDto) in
+                    onLongPress: { (category: CategoryDto) in
                         selectedCategoryForDetail = category
                     }
                 )
@@ -57,9 +56,8 @@ struct BrowseEventsScreen: View {
                 onApply: viewModel.applyFilters
             )
         }
-        .sheet(item: $selectedCategoryForDetail) { (category: EventTypeDto) in
+        .sheet(item: $selectedCategoryForDetail) { (category: CategoryDto) in
             CategoryDetailScreen(category: category)
         }
     }
 }
-

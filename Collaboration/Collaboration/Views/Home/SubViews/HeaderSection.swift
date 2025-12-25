@@ -8,13 +8,15 @@
 import SwiftUI
 
 struct HeaderSection: View {
+    @EnvironmentObject var coordinator: AppCoordinator
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             TitleView()
             
             Divider()
             
-            WelcomeView()
+            WelcomeView(name: coordinator.currentUser?.firstName ?? "User")
         }
         .padding()
         .background(Color.white)
@@ -22,9 +24,11 @@ struct HeaderSection: View {
 }
 
 struct WelcomeView: View {
+    let name: String
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Welcome back, Sarah") // აქ მერე ნამდვილ სახელს ჩავწერთ
+            Text("Welcome back, \(name)")
                 .font(.system(size: 28, weight: .medium))
             
             Text("Stay connected with upcoming company events and activities.")

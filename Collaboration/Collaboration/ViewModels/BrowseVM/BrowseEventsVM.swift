@@ -5,7 +5,6 @@
 //  Created by Rize on 21.12.25.
 //
 
-
 import Foundation
 import SwiftUI
 import Combine
@@ -13,7 +12,8 @@ import Combine
 @MainActor
 class BrowseEventsVM: ObservableObject {
     @Published var events: [EventListDto] = []
-    @Published var categories: [EventTypeDto] = []
+    @Published var allEvents: [EventListDto] = []
+    @Published var categories: [CategoryDto] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     
@@ -25,8 +25,12 @@ class BrowseEventsVM: ObservableObject {
     @Published var locationText = ""
     @Published var dateRange: DateRange = .all
     
-    private let apiService = MockAPIService.shared
+    private let eventService: EventServiceProtocol
     private var searchTask: Task<Void, Never>?
+    
+    init(eventService: EventServiceProtocol = AppConfig.makeEventService()) {
+        self.eventService = eventService
+    }
     
     var hasFiltersActive: Bool {
         showAvailableOnly || !locationText.isEmpty || dateRange != .all
@@ -50,61 +54,140 @@ class BrowseEventsVM: ObservableObject {
         errorMessage = nil
         
         do {
-            let results = try await apiService.getEvents(
-                eventTypeId: activeCategory,
-                location: locationText.isEmpty ? nil : locationText,
-                searchKeyword: searchQuery.isEmpty ? nil : searchQuery,
-                onlyAvailable: showAvailableOnly ? true : nil
+            let results = try await eventService.getEvents(
+                eventTypeId: nil,
+                location: nil,
+                searchKeyword: nil,
+                onlyAvailable: nil
             )
-            events = results
-        } catch {
-            if let apiError = error as? APIError {
-                errorMessage = apiError.errorMessage
-            } else {
-                errorMessage = error.localizedDescription
+            
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
             }
+            
+            allEvents = results
+            applyClientSideFilters()
+            
+        } catch is CancellationError {
+        } catch let error as APIError {
+            errorMessage = error.errorMessage
+        } catch {
+            errorMessage = "Failed to load events"
         }
         
         isLoading = false
     }
     
+    private func applyClientSideFilters() {
+        var filtered = allEvents
+        
+        if let categoryId = activeCategory {
+            filtered = filtered.filter { $0.categoryId == categoryId }
+        }
+        
+        if !searchQuery.isEmpty {
+            filtered = filtered.filter { event in
+                event.title.localizedCaseInsensitiveContains(searchQuery) ||
+                event.description.localizedCaseInsensitiveContains(searchQuery) ||
+                event.location.localizedCaseInsensitiveContains(searchQuery)
+            }
+        }
+        
+        if showAvailableOnly {
+            filtered = filtered.filter { $0.availableSlots > 0 }
+        }
+        
+        if !locationText.isEmpty {
+            filtered = filtered.filter { $0.location.localizedCaseInsensitiveContains(locationText) }
+        }
+        
+        if dateRange != .all {
+            filtered = filtered.filter { event in
+                guard let eventDate = parseEventDate(event.startDateTime) else { return false }
+                return isEventInDateRange(eventDate, range: dateRange)
+            }
+        }
+        
+        events = filtered
+    }
+    
+    private func parseEventDate(_ dateString: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.timeZone = TimeZone.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: dateString)
+    }
+    
+    private func isEventInDateRange(_ eventDate: Date, range: DateRange) -> Bool {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        switch range {
+        case .all:
+            return true
+            
+        case .today:
+            return calendar.isDateInToday(eventDate)
+            
+        case .thisWeek:
+            guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
+                  let weekEnd = calendar.dateInterval(of: .weekOfYear, for: now)?.end else {
+                return false
+            }
+            return eventDate >= weekStart && eventDate <= weekEnd
+            
+        case .thisMonth:
+            guard let monthStart = calendar.dateInterval(of: .month, for: now)?.start,
+                  let monthEnd = calendar.dateInterval(of: .month, for: now)?.end else {
+                return false
+            }
+            return eventDate >= monthStart && eventDate <= monthEnd
+            
+        case .nextMonth:
+            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: now),
+                  let monthStart = calendar.dateInterval(of: .month, for: nextMonth)?.start,
+                  let monthEnd = calendar.dateInterval(of: .month, for: nextMonth)?.end else {
+                return false
+            }
+            return eventDate >= monthStart && eventDate <= monthEnd
+        }
+    }
+    
     private func loadCategories() async {
         do {
-            categories = try await apiService.getEventTypes()
+            categories = try await eventService.getCategories()
         } catch {
-            print("Failed to load categories: \(error)")
         }
     }
     
     func selectCategory(_ id: Int?) {
         activeCategory = id
-        Task {
-            await fetchEvents()
-        }
+        applyClientSideFilters()
     }
     
     func updateSearch(_ query: String) {
         searchTask?.cancel()
         
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: 300_000_000)
             
             guard !Task.isCancelled else { return }
             
-            await fetchEvents()
+            applyClientSideFilters()
         }
     }
     
     func applyFilters(_ filters: EventFilters) {
-        Task {
-            await fetchEvents()
-        }
+        applyClientSideFilters()
     }
     
     func clearFilters() {
         showAvailableOnly = false
         locationText = ""
         dateRange = .all
+        applyClientSideFilters()
     }
     
     func buildFilters() -> EventFilters {

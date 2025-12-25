@@ -9,9 +9,6 @@ import Foundation
 import SwiftUI
 import Combine
 
-import Foundation
-import SwiftUI
-
 @MainActor
 class RegistrationViewModel: ObservableObject {
     
@@ -27,7 +24,7 @@ class RegistrationViewModel: ObservableObject {
     
     @Published var isOTPSent = false
     @Published var isOTPVerified = false
-    @Published var timeRemaining = 0
+    @Published var timeRemaining = 120
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -36,11 +33,19 @@ class RegistrationViewModel: ObservableObject {
     
     @Published var phoneNumberError: String?
     @Published var showPhoneError = false
+    @Published var registrationSuccessful = false
     
     private var storedOTP: String?
     private var otpPhoneNumber: String?
     private var authToken: String?
-    private var currentUser: User?
+    private var currentUser: UserProfileDto?
+    
+    private let authService: AuthServiceProtocol
+    private let tokenManager = TokenManager.shared
+    
+    init(authService: AuthServiceProtocol = AppConfig.makeAuthService()) {
+        self.authService = authService
+    }
     
     var otpCodeString: String {
         otpCode.joined()
@@ -107,8 +112,6 @@ class RegistrationViewModel: ObservableObject {
         timeRemaining = AppConstants.OTP.expirationSeconds
         successMessage = String(format: Strings.Success.otpSent, phoneNumber)
         
-        print("📱 OTP: \(otp)")
-        
         isLoading = false
     }
     
@@ -130,7 +133,6 @@ class RegistrationViewModel: ObservableObject {
         
         if otpCodeString == storedOTP || otpCodeString == "123456" {
             isOTPVerified = true
-            successMessage = Strings.Success.phoneVerified
             storedOTP = nil
             otpPhoneNumber = nil
         } else {
@@ -161,44 +163,60 @@ class RegistrationViewModel: ObservableObject {
         
         otpCode = ["", "", "", "", "", ""]
         
-        print("📱 OTP: \(otp)")
-        
         isLoading = false
     }
     
     func register() async {
-        if !isFormValid {
-            errorMessage = getValidationErrors()
+        guard isFormValid else {
+            errorMessage = "Please fill all fields correctly"
             return
         }
         
         isLoading = true
+        errorMessage = nil
         
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        
-        let request = RegisterRequest(
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            phoneNumber: phoneNumber,
-            otpCode: otpCodeString,
-            department: department.rawValue,
-            password: password,
-            agree: agreedToTerms
-        )
-        
-        let mockUser = User(
-            id: "3",
-            email: request.email,
-            fullName: request.firstName,
-            role: request.phoneNumber
-        )
-        
-        authToken = "mock_token_\(UUID().uuidString)"
-        currentUser = mockUser
-        
-        successMessage = Strings.Success.welcome(name: mockUser.fullName)
-        isRegistered = true
+        do {
+            
+            let nameParts = fullName.split(separator: " ", maxSplits: 1)
+            let firstName = String(nameParts.first ?? "")
+            let lastName = nameParts.count > 1 ? String(nameParts[1]) : ""
+            
+            try await authService.register(
+                email: email,
+                password: password,
+                firstName: firstName,
+                lastName: lastName
+            )
+            
+            let loginResponse = try await authService.login(
+                email: email,
+                password: password
+            )
+            
+            
+            let user = UserProfileDto(
+                id: loginResponse.userId,
+                email: loginResponse.email,
+                fullName: loginResponse.fullName,
+                department: loginResponse.department,
+                isAdmin: loginResponse.isAdmin
+            )
+            
+            registrationSuccessful = true
+            successMessage = "Account created successfully! Please sign in."
+            
+        } catch let error as APIError {
+            errorMessage = error.errorMessage
+            
+            if case .badRequest(let response) = error,
+               let details = response.details {
+                if let firstError = details.values.first?.first {
+                    errorMessage = firstError
+                }
+            }
+        } catch {
+            errorMessage = "Registration failed. Please try again."
+        }
         
         isLoading = false
     }
@@ -228,7 +246,7 @@ class RegistrationViewModel: ObservableObject {
         return authToken
     }
     
-    func getCurrentUser() -> User? {
+    func getCurrentUser() -> UserProfileDto? {
         return currentUser
     }
     

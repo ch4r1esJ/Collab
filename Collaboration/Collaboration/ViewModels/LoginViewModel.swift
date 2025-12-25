@@ -19,10 +19,13 @@ class LoginViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-    @Published var isLoggedIn = false
     
-    private var authToken: String?
-    private var currentUser: User?
+    private let authService: AuthServiceProtocol
+    private let tokenManager = TokenManager.shared
+    
+    init(authService: AuthServiceProtocol = AppConfig.makeAuthService()) {
+        self.authService = authService
+    }
     
     var isFormValid: Bool {
         !email.isEmpty &&
@@ -31,32 +34,38 @@ class LoginViewModel: ObservableObject {
         password.count >= AppConstants.Validation.minPasswordLength
     }
     
-    func login() async {
+    func login(coordinator: AppCoordinator) async {
         guard isFormValid else {
             errorMessage = Strings.Error.fillAllFields
             return
         }
         
         isLoading = true
+        errorMessage = nil
         
-        try? await Task.sleep(nanoseconds: AppConstants.Animation.loadingDelay)
-        
-        if email == "test@example.com" && password == "Password123" {
+        do {
+            let response = try await authService.login(email: email, password: password)
             
-            let mockUser = User(
-                id: "0",
-                email: "watever@gmail.com",
-                fullName: "John Doe",
-                role: "User"
+            let user = UserProfileDto(
+                id: response.userId,
+                email: response.email,
+                fullName: response.fullName,
+                department: response.department,
+                isAdmin: response.isAdmin
             )
             
-            authToken = "mock_token_\(UUID().uuidString)"
-            currentUser = mockUser
+            coordinator.login(
+                token: response.token,
+                user: user,
+                expiresAt: response.expiresAt
+            )
             
-            successMessage = Strings.Success.welcome(name: mockUser.fullName)
-            isLoggedIn = true
-        } else {
-            errorMessage = Strings.Error.invalidCredentials
+            successMessage = Strings.Success.welcome(name: response.fullName)
+            
+        } catch let error as APIError {
+            errorMessage = error.errorMessage
+        } catch {
+            errorMessage = "An unexpected error occurred"
         }
         
         isLoading = false
@@ -69,30 +78,17 @@ class LoginViewModel: ObservableObject {
         }
         
         isLoading = true
+        errorMessage = nil
         
-        try? await Task.sleep(nanoseconds: AppConstants.Animation.loadingDelay)
-        
-        successMessage = String(format: Strings.Success.passwordResetSent, email)
+        do {
+            try await authService.sendPasswordResetLink(email: email)
+            successMessage = String(format: Strings.Success.passwordResetSent, email)
+        } catch let error as APIError {
+            errorMessage = error.errorMessage
+        } catch {
+            errorMessage = "Failed to send reset link"
+        }
         
         isLoading = false
-    }
-    
-    func logout() {
-        authToken = nil
-        currentUser = nil
-        isLoggedIn = false
-        email = ""
-        password = ""
-        rememberMe = false
-        errorMessage = nil
-        successMessage = nil
-    }
-    
-    func getAuthToken() -> String? {
-        return authToken
-    }
-    
-    func getCurrentUser() -> User? {
-        return currentUser
     }
 }

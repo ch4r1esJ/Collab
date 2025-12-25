@@ -8,20 +8,21 @@
 import SwiftUI
 
 struct CategoryCard: View {
-    let category: Category
+    let category: CategoryDto
+    let iconName: String
     
     var body: some View {
         VStack(spacing: 8) {
-            Image(category.iconName)
+            Image(iconName)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 35, height: 35)
             
-            Text(category.name)
+            Text(category.title)
                 .font(.system(size: 14, weight: .medium))
                 .multilineTextAlignment(.center)
             
-            Text("\(category.eventCount) events")
+            Text("\(category.totalEvents) events")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
         }
@@ -33,4 +34,3 @@ struct CategoryCard: View {
         )
     }
 }
-

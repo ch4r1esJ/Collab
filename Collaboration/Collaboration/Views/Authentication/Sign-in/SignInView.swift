@@ -36,7 +36,9 @@ struct SignInView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .alert("Success", isPresented: .constant(viewModel.successMessage != nil)) {
-            Button("OK") { viewModel.successMessage = nil }
+            Button("OK") {
+                viewModel.successMessage = nil
+            }
         } message: {
             Text(viewModel.successMessage ?? "")
         }
@@ -129,13 +131,6 @@ struct SignInView: View {
             
             Spacer()
             
-//            Button(action: {
-//                Task { await viewModel.forgotPassword() }
-//            }) {
-//                Text("Forgot password?")
-//                    .font(.system(size: 14))
-//                    .foregroundColor(.black)
-//            }
             NavigationLink {
                 ForgotPasswordView()
             } label: {
@@ -148,8 +143,9 @@ struct SignInView: View {
     
     private var signInButton: some View {
         Button(action: {
-            Task { await viewModel.login() }
-            coordinator.login()
+            Task {
+                await viewModel.login(coordinator: coordinator)
+            }
         }) {
             Text("Sign In")
                 .font(.system(size: 16, weight: .medium))
@@ -188,3 +184,9 @@ struct SignInView: View {
     }
 }
 
+#Preview {
+    NavigationStack {
+        SignInView()
+            .environmentObject(AppCoordinator())
+    }
+}
