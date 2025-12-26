@@ -13,6 +13,7 @@ enum AppRoute: Hashable {
     case signUp
     case home
     case allEvents
+    case browseWithCategory(Int)
     case eventDetails(Int)
 }
 
@@ -23,6 +24,7 @@ class AppCoordinator: ObservableObject {
     @Published var isCheckingAuth = true
     
     @Published var path = NavigationPath()
+    @Published var selectedBrowseCategory: Int?
     
     private let tokenManager = TokenManager.shared
     
@@ -32,6 +34,11 @@ class AppCoordinator: ObservableObject {
     
     func navigate(to route: AppRoute) {
         path.append(route)
+    }
+    
+    func navigateToBrowseWithCategory(_ categoryId: Int) {
+        selectedBrowseCategory = categoryId
+        navigate(to: .browseWithCategory(categoryId))
     }
     
     func goBack() {

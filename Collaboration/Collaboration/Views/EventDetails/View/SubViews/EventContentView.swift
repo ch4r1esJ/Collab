@@ -121,7 +121,7 @@ struct EventContentView: View {
             InfoRow(icon: "calendar", text: event.formattedDate)
             InfoRow(icon: "clock", text: event.timeRange)
             InfoRow(icon: "mappin.and.ellipse", text: "\(event.location) • \(event.venueName)")
-            InfoRow(icon: "person.2", text: event.registrationInfo)
+            InfoRow(icon: "person.2", text: event.registrationInfo(waitlistCount: viewModel.waitlistCount))
         }
     }
     
@@ -138,9 +138,9 @@ struct EventContentView: View {
         return Button(action: {
             Task {
                 switch buttonState {
-                case .available:
+                case .available, .waitlist:
                     await viewModel.registerForEvent()
-                case .registered:
+                case .registered, .waitlisted:
                     await viewModel.unregisterFromEvent()
                 case .full:
                     break
@@ -172,6 +172,10 @@ struct EventContentView: View {
             return "Register Now"
         case .registered:
             return "Cancel Registration"
+        case .waitlist:
+            return "Join Waitlist"
+        case .waitlisted:
+            return "Leave Waitlist"
         case .full:
             return "Event Full"
         }
@@ -180,9 +184,13 @@ struct EventContentView: View {
     private func buttonColor(for state: RegistrationButtonState) -> Color {
         switch state {
         case .available:
-            return .black
+            return Color("button")
         case .registered:
             return .red
+        case .waitlist:
+            return .orange
+        case .waitlisted:
+            return .orange.opacity(0.8)
         case .full:
             return .gray
         }
@@ -190,12 +198,10 @@ struct EventContentView: View {
     
     private func canTapButton(for state: RegistrationButtonState) -> Bool {
         switch state {
-        case .available:
-            return viewModel.canRegister()
-        case .registered:
-            return !viewModel.isRegistering
         case .full:
-            return false
+            return false  // ✅ ADD THIS - Disabled
+        default:
+            return !viewModel.isRegistering
         }
     }
     

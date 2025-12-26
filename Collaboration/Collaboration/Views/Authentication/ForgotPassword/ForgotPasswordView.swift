@@ -8,35 +8,61 @@
 import SwiftUI
 
 struct ForgotPasswordView: View {
+    @Environment(\.dismiss) var dismiss
     @State private var email = ""
+    
+    var onPasswordReset: ((String, String) -> Void)?
     
     var body: some View {
         ZStack {
             backgroundColor
             
             VStack {
-                ForgotPasswordCard(email: $email)
+                ForgotPasswordCard(
+                    email: $email,
+                    onSendReset: {
+                        handlePasswordReset()
+                    },
+                    onBackToSignIn: {
+                        dismiss()
+                    }
+                )
             }
             .frame(maxWidth: 450)
             .padding(20)
         }
+        .navigationBarBackButtonHidden(true)
     }
     
     private var backgroundColor: some View {
         Color(red: 245/255, green: 245/255, blue: 245/255)
             .ignoresSafeArea()
     }
+    
+    private func handlePasswordReset() {
+        guard !email.isEmpty else { return }
+        guard Validator.isValidEmail(email) else { return }
+        
+        onPasswordReset?(email, "Password123")
+        dismiss()
+    }
 }
 
 struct ForgotPasswordCard: View {
     @Binding var email: String
+    let onSendReset: () -> Void
+    let onBackToSignIn: () -> Void
     
     var body: some View {
         VStack(spacing: 0) {
             Head()
             EmailInputSection(email: $email)
-            SendResetButton()
-            BackToSignInButton()
+            SendResetButton(isEnabled: !email.isEmpty && Validator.isValidEmail(email)) {
+                onSendReset()
+            }
+            BackToSignInButton {
+                onBackToSignIn()
+            }
         }
         .background(Color.white)
         .cornerRadius(16)
@@ -90,6 +116,8 @@ struct EmailTextField: View {
             TextField("Enter your email", text: $email)
                 .font(.system(size: 15))
                 .foregroundColor(.black)
+                .autocapitalization(.none)
+                .keyboardType(.emailAddress)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -103,24 +131,30 @@ struct EmailTextField: View {
 }
 
 struct SendResetButton: View {
+    let isEnabled: Bool
+    let action: () -> Void
+    
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             Text("Send Reset Link")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(Color.black)
+                .background(isEnabled ? Color("button") : Color.gray)
                 .cornerRadius(8)
         }
+        .disabled(!isEnabled)
         .padding(.horizontal, 32)
         .padding(.top, 24)
     }
 }
 
 struct BackToSignInButton: View {
+    let action: () -> Void
+    
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "arrow.left")
                     .font(.system(size: 14))

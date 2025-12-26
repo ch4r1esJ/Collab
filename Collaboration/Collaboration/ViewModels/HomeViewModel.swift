@@ -42,7 +42,22 @@ class HomeViewModel: ObservableObject {
                 return
             }
             
+            let now = Date()
+            
             self.upcomingEvents = upcoming
+                .filter { event in
+                    guard let eventDate = parseEventDate(event.startDateTime) else {
+                        return false
+                    }
+                    return eventDate > now
+                }
+                .sorted { event1, event2 in
+                    guard let date1 = parseEventDate(event1.startDateTime),
+                          let date2 = parseEventDate(event2.startDateTime) else {
+                        return false
+                    }
+                    return date1 < date2
+                }
             
             let cats = try await eventService.getCategories()
             
@@ -62,8 +77,8 @@ class HomeViewModel: ObservableObject {
             
             self.categories = types
             
-            if upcoming.count >= 3 {
-                let trendingIds = upcoming
+            if self.upcomingEvents.count >= 3 {
+                let trendingIds = self.upcomingEvents
                     .sorted { $0.currentCapacity > $1.currentCapacity }
                     .prefix(3)
                     .map { $0.id }
@@ -108,5 +123,13 @@ class HomeViewModel: ObservableObject {
         }
         
         self.trendingEvents = details
+    }
+    
+    private func parseEventDate(_ dateString: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.timeZone = TimeZone.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: dateString)
     }
 }

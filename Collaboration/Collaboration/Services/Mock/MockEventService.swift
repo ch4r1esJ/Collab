@@ -8,6 +8,10 @@
 import Foundation
 
 class MockEventService: EventServiceProtocol {
+    func getMyRegistrations() async throws -> [RegistrationDto] {
+        return mockAPI.getMyRegistrations()
+    }
+    
     private let mockAPI = MockAPIService.shared
     
     func checkRegistration(eventId: Int) async throws -> RegistrationCheckDto {
@@ -58,5 +62,19 @@ class MockEventService: EventServiceProtocol {
     
     func getCategories() async throws -> [CategoryDto] {
         try await mockAPI.getCategories()
+    }
+    
+    func getNotifications() async throws -> NotificationsResponse {
+        return mockAPI.getNotifications()
+    }
+
+    func getUnreadCount() async throws -> UnreadCountResponse {
+        return UnreadCountResponse(unreadCount: 2)
+    }
+
+    func markAsRead(notificationId: Int) async throws {
+    }
+
+    func deleteNotification(notificationId: Int) async throws {
     }
 }

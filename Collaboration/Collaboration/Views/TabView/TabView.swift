@@ -23,6 +23,8 @@ struct MainTabView: View {
                             SignUpView()
                         case .login:
                             SignInView()
+                        case .browseWithCategory(let categoryId):  
+                                BrowseEventsScreen(initialCategory: categoryId)
                         case .home:
                             EmptyView()
                         case .eventDetails(let eventId):
@@ -54,5 +56,8 @@ struct MainTabView: View {
                     Label("Profile", systemImage: "person")
                 }
         }
+//        .onTapGesture {
+//            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+//        }
     }
 }

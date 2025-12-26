@@ -28,8 +28,9 @@ class BrowseEventsVM: ObservableObject {
     private let eventService: EventServiceProtocol
     private var searchTask: Task<Void, Never>?
     
-    init(eventService: EventServiceProtocol = AppConfig.makeEventService()) {
+    init(eventService: EventServiceProtocol = AppConfig.makeEventService(), initialCategory: Int? = nil) {
         self.eventService = eventService
+        self.activeCategory = initialCategory
     }
     
     var hasFiltersActive: Bool {

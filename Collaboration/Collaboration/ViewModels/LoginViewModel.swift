@@ -23,8 +23,12 @@ class LoginViewModel: ObservableObject {
     private let authService: AuthServiceProtocol
     private let tokenManager = TokenManager.shared
     
+    private let rememberMeKey = "rememberMe"
+    private let savedEmailKey = "savedEmail"
+    
     init(authService: AuthServiceProtocol = AppConfig.makeAuthService()) {
         self.authService = authService
+        loadSavedEmail()
     }
     
     var isFormValid: Bool {
@@ -32,6 +36,27 @@ class LoginViewModel: ObservableObject {
         Validator.isValidEmail(email) &&
         !password.isEmpty &&
         password.count >= AppConstants.Validation.minPasswordLength
+    }
+    
+    func loadSavedEmail() {
+        let isRemembered = UserDefaults.standard.bool(forKey: rememberMeKey)
+        
+        if isRemembered {
+            if let savedEmail = UserDefaults.standard.string(forKey: savedEmailKey) {
+                self.email = savedEmail
+                self.rememberMe = true
+            }
+        }
+    }
+    
+    private func handleRememberMe() {
+        if rememberMe {
+            UserDefaults.standard.set(true, forKey: rememberMeKey)
+            UserDefaults.standard.set(email, forKey: savedEmailKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: rememberMeKey)
+            UserDefaults.standard.removeObject(forKey: savedEmailKey)
+        }
     }
     
     func login(coordinator: AppCoordinator) async {
@@ -45,6 +70,15 @@ class LoginViewModel: ObservableObject {
         
         do {
             let response = try await authService.login(email: email, password: password)
+            
+            if response.isAdmin {
+                tokenManager.clearToken()
+                errorMessage = "Admin accounts cannot login through the mobile app. Please use the admin web portal."
+                isLoading = false
+                return
+            }
+            
+            handleRememberMe()
             
             let user = UserProfileDto(
                 id: response.userId,

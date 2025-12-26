@@ -8,8 +8,15 @@
 import SwiftUI
 
 struct BrowseEventsScreen: View {
-    @StateObject private var viewModel = BrowseEventsVM()
+    let initialCategory: Int?
+    
+    @StateObject private var viewModel: BrowseEventsVM
     @State private var selectedCategoryForDetail: CategoryDto?
+    
+    init(initialCategory: Int? = nil) {
+        self.initialCategory = initialCategory
+        _viewModel = StateObject(wrappedValue: BrowseEventsVM(initialCategory: initialCategory))
+    }
     
     var body: some View {
         NavigationView {

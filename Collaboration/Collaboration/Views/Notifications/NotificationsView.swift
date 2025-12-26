@@ -1,46 +1,96 @@
 //
 //  NotificationsView.swift
-//  davigale
+//  Collaboration
 //
 //  Created by Rize on 25.12.25.
 //
 
 import SwiftUI
+import Combine
 
 struct NotificationsView: View {
+    @StateObject private var viewModel = NotificationsViewModel()
     @State private var showDetailSheet = false
-    @State private var selectedTab = 0
+    @State private var selectedNotification: NotificationDto?
+    @State private var navigateToEvent: Int?
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationHeader()
-            Divider().background(Color(red: 229/255, green: 229/255, blue: 234/255))
-            TabBar(selectedTab: $selectedTab)
-            Divider().background(Color(red: 229/255, green: 229/255, blue: 234/255))
-            NotificationsList(showDetailSheet: $showDetailSheet)
-        }
-        .background(Color(red: 242/255, green: 242/255, blue: 242/255))
-        .sheet(isPresented: $showDetailSheet) {
-            NotificationDetailSheet(showSheet: $showDetailSheet)
+        NavigationStack {
+            VStack(spacing: 0) {
+                NavigationHeader(
+                    unreadCount: viewModel.unreadCount,
+                    onBackTap: { dismiss() }
+                )
+                Divider().background(Color(red: 229/255, green: 229/255, blue: 234/255))
+                TabBar(selectedTab: $viewModel.selectedTab, onTabChange: { tab in
+                    viewModel.changeTab(to: tab)
+                })
+                Divider().background(Color(red: 229/255, green: 229/255, blue: 234/255))
+                
+                if viewModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    NotificationsList(
+                        newNotifications: viewModel.newNotifications,
+                        earlierNotifications: viewModel.earlierNotifications,
+                        showDetailSheet: $showDetailSheet,
+                        selectedNotification: $selectedNotification,
+                        onMarkAsRead: { id in
+                            Task { await viewModel.markAsRead(id) }
+                        }
+                    )
+                }
+            }
+            .background(Color(red: 242/255, green: 242/255, blue: 242/255))
+            .navigationBarHidden(true)
+            .navigationDestination(item: $navigateToEvent) { eventId in
+                EventDetailsView(eventId: eventId)
+            }
+            .task {
+                await viewModel.loadNotifications()
+            }
+            .sheet(item: $selectedNotification) { notification in
+                NotificationDetailSheet(
+                    notification: notification,
+                    showSheet: Binding(
+                        get: { selectedNotification != nil },
+                        set: { if !$0 { selectedNotification = nil } }
+                    ),
+                    navigateToEvent: $navigateToEvent
+                )
+            }
         }
     }
 }
 
 struct NavigationHeader: View {
+    let unreadCount: Int
+    let onBackTap: () -> Void
+    
     var body: some View {
         HStack(spacing: 0) {
-            Button(action: {}) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.black)
-                    .frame(width: 44, height: 44)
-            }
+            Spacer()
+                .frame(width: 44)
             
             Spacer()
             
-            Text("Notifications")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(.black)
+            HStack(spacing: 8) {
+                Text("Notifications")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.black)
+                
+                if unreadCount > 0 {
+                    Text("\(unreadCount)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.red)
+                        .clipShape(Capsule())
+                }
+            }
             
             Spacer()
             
@@ -60,13 +110,14 @@ struct NavigationHeader: View {
 
 struct TabBar: View {
     @Binding var selectedTab: Int
+    let onTabChange: (Int) -> Void
     
     var body: some View {
         HStack(spacing: 0) {
-            TabButton(title: "All", isSelected: selectedTab == 0, action: { selectedTab = 0 })
-            TabButton(title: "Registrations", isSelected: selectedTab == 1, action: { selectedTab = 1 })
-            TabButton(title: "Reminders", isSelected: selectedTab == 2, action: { selectedTab = 2 })
-            TabButton(title: "Updates", isSelected: selectedTab == 3, action: { selectedTab = 3 })
+            TabButton(title: "All", isSelected: selectedTab == 0, action: { onTabChange(0) })
+            TabButton(title: "Registrations", isSelected: selectedTab == 1, action: { onTabChange(1) })
+            TabButton(title: "Reminders", isSelected: selectedTab == 2, action: { onTabChange(2) })
+            TabButton(title: "Updates", isSelected: selectedTab == 3, action: { onTabChange(3) })
         }
         .frame(height: 44)
         .background(Color.white)
@@ -97,13 +148,34 @@ struct TabButton: View {
 }
 
 struct NotificationsList: View {
+    let newNotifications: [NotificationDto]
+    let earlierNotifications: [NotificationDto]
     @Binding var showDetailSheet: Bool
+    @Binding var selectedNotification: NotificationDto?
+    let onMarkAsRead: (Int) -> Void
     
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                NewNotificationsSection(showDetailSheet: $showDetailSheet)
-                EarlierNotificationsSection()
+                if !newNotifications.isEmpty {
+                    NewNotificationsSection(
+                        notifications: newNotifications,
+                        selectedNotification: $selectedNotification,
+                        onMarkAsRead: onMarkAsRead
+                    )
+                }
+                
+                if !earlierNotifications.isEmpty {
+                    EarlierNotificationsSection(
+                        notifications: earlierNotifications,
+                        selectedNotification: $selectedNotification
+                    )
+                }
+                
+                if newNotifications.isEmpty && earlierNotifications.isEmpty {
+                    EmptyStateView()
+                }
+                
                 Spacer(minLength: 20)
             }
         }
@@ -111,8 +183,30 @@ struct NotificationsList: View {
     }
 }
 
+struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "bell.slash")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            
+            Text("No notifications")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.black)
+            
+            Text("You're all caught up!")
+                .font(.system(size: 15))
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 100)
+    }
+}
+
 struct NewNotificationsSection: View {
-    @Binding var showDetailSheet: Bool
+    let notifications: [NotificationDto]
+    @Binding var selectedNotification: NotificationDto?
+    let onMarkAsRead: (Int) -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -121,24 +215,26 @@ struct NewNotificationsSection: View {
                 .padding(.bottom, 12)
             
             VStack(spacing: 0) {
-                Button(action: { showDetailSheet = true }) {
-                    NotificationCard(
-                        icon: "calendar",
-                        text: "Registration Confirmed: You are now registered for the 'Leadership Workshop: Effective Communication'.",
-                        time: "15 minutes ago",
-                        showDot: true
-                    )
+                ForEach(Array(notifications.enumerated()), id: \.element.id) { index, notification in
+                    Button(action: {
+                        selectedNotification = notification
+                        if !notification.isSeen {
+                            onMarkAsRead(notification.id)
+                        }
+                    }) {
+                        NotificationCard(
+                            icon: notification.icon,
+                            text: notification.message,
+                            time: notification.timeAgo,
+                            showDot: !notification.isSeen
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    if index < notifications.count - 1 {
+                        NotificationDivider()
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
-                
-                NotificationDivider()
-                
-                NotificationCard(
-                    icon: "bell.fill",
-                    text: "Event Reminder: 'Annual Team Building Summit' starts in 24 hours. Don't forget to join!",
-                    time: "1 hour ago",
-                    showDot: true
-                )
             }
             .background(Color.white)
         }
@@ -146,6 +242,9 @@ struct NewNotificationsSection: View {
 }
 
 struct EarlierNotificationsSection: View {
+    let notifications: [NotificationDto]
+    @Binding var selectedNotification: NotificationDto?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "EARLIER")
@@ -153,30 +252,23 @@ struct EarlierNotificationsSection: View {
                 .padding(.bottom, 12)
             
             VStack(spacing: 0) {
-                NotificationCard(
-                    icon: "info.circle.fill",
-                    text: "Event Update: The location for 'Happy Friday: Game Night' has been changed to the Recreation Lounge.",
-                    time: "Yesterday",
-                    showDot: false
-                )
-                
-                NotificationDivider()
-                
-                NotificationCard(
-                    icon: "person.2.fill",
-                    text: "Waitlist Update: A spot has opened up for 'Tech Talk: AI in Business Operations'. You have been automatically registered.",
-                    time: "2 days ago",
-                    showDot: false
-                )
-                
-                NotificationDivider()
-                
-                NotificationCard(
-                    icon: "calendar",
-                    text: "Cancellation: Your registration for the 'Wellness Wednesday Yoga' has been successfully cancelled.",
-                    time: "Dec 12, 2025",
-                    showDot: false
-                )
+                ForEach(Array(notifications.enumerated()), id: \.element.id) { index, notification in
+                    Button(action: {
+                        selectedNotification = notification
+                    }) {
+                        NotificationCard(
+                            icon: notification.icon,
+                            text: notification.message,
+                            time: notification.timeAgo,
+                            showDot: false
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    if index < notifications.count - 1 {
+                        NotificationDivider()
+                    }
+                }
             }
             .background(Color.white)
         }
@@ -263,17 +355,64 @@ struct NotificationDivider: View {
 }
 
 struct NotificationDetailSheet: View {
+    let notification: NotificationDto
     @Binding var showSheet: Bool
+    @Binding var navigateToEvent: Int?
     
     var body: some View {
         VStack(spacing: 0) {
             SheetHandle()
-            EventDetailsCard()
-            ActionButtons(showSheet: $showSheet)
+            
+            if let eventTitle = notification.eventTitle {
+                EventDetailsCard(
+                    eventTitle: eventTitle,
+                    notification: notification,
+                    showSheet: $showSheet,
+                    navigateToEvent: $navigateToEvent
+                )
+                ActionButtons(showSheet: $showSheet, notification: notification)
+            } else {
+                SimpleNotificationCard(notification: notification)
+                Button(action: { showSheet = false }) {
+                    Text("Close")
+                        .font(.system(size: 17))
+                        .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
+            }
         }
         .background(.white)
         .presentationDetents([.height(400)])
         .presentationDragIndicator(.hidden)
+    }
+}
+
+struct SimpleNotificationCard: View {
+    let notification: NotificationDto
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(notification.title)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(.black)
+            
+            Text(notification.message)
+                .font(.system(size: 15))
+                .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255))
+            
+            Text(notification.timeAgo)
+                .font(.system(size: 13))
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(12)
+        .padding(.horizontal, 16)
     }
 }
 
@@ -288,18 +427,29 @@ struct SheetHandle: View {
 }
 
 struct EventDetailsCard: View {
+    let eventTitle: String
+    let notification: NotificationDto
+    @Binding var showSheet: Bool
+    @Binding var navigateToEvent: Int?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Tech Talk: AI in Business")
+            Text(eventTitle)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(.black)
             
-            EventInfo()
+            Text(notification.message)
+                .font(.system(size: 15))
+                .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255))
             
             Divider()
                 .background(Color(red: 229/255, green: 229/255, blue: 234/255))
             
-            EventActions()
+            EventActions(
+                notification: notification,
+                showSheet: $showSheet,
+                navigateToEvent: $navigateToEvent
+            )
         }
         .padding(16)
         .background(Color.white)
@@ -308,65 +458,34 @@ struct EventDetailsCard: View {
     }
 }
 
-struct EventInfo: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(red: 142/255, green: 142/255, blue: 147/255))
-                    .frame(width: 20)
-                Text("Jan 26, 2025, 11:00 AM - 12:30 PM")
-                    .font(.system(size: 15))
-                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255))
-            }
-            
-            HStack(spacing: 10) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(red: 142/255, green: 142/255, blue: 147/255))
-                    .frame(width: 20)
-                Text("Virtual Meeting")
-                    .font(.system(size: 15))
-                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255))
-            }
-        }
-    }
-}
-
 struct EventActions: View {
+    let notification: NotificationDto
+    @Binding var showSheet: Bool
+    @Binding var navigateToEvent: Int?
+    
     var body: some View {
         VStack(spacing: 12) {
-            Button(action: {}) {
-                HStack(spacing: 12) {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 20))
-                        .foregroundColor(.black)
-                    Text("Send a question about the event")
-                        .font(.system(size: 15))
-                        .foregroundColor(.black)
-                    Spacer()
+            if let eventId = notification.eventId {
+                Button(action: {
+                    showSheet = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        navigateToEvent = eventId
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.black)
+                        Text("View event details")
+                            .font(.system(size: 15))
+                            .foregroundColor(.black)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color(red: 242/255, green: 242/255, blue: 247/255))
+                    .cornerRadius(8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(Color(red: 242/255, green: 242/255, blue: 247/255))
-                .cornerRadius(8)
-            }
-            
-            Button(action: {}) {
-                HStack(spacing: 12) {
-                    Image(systemName: "calendar.badge.plus")
-                        .font(.system(size: 20))
-                        .foregroundColor(.black)
-                    Text("Add to my calendar")
-                        .font(.system(size: 15))
-                        .foregroundColor(.black)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(Color(red: 242/255, green: 242/255, blue: 247/255))
-                .cornerRadius(8)
             }
         }
     }
@@ -374,17 +493,33 @@ struct EventActions: View {
 
 struct ActionButtons: View {
     @Binding var showSheet: Bool
+    let notification: NotificationDto
+    @State private var showCancelAlert = false
     
     var body: some View {
         VStack(spacing: 12) {
-            Button(action: {}) {
-                Text("Cancel Registration")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.black)
-                    .cornerRadius(12)
+            if notification.type == "Registration", let eventId = notification.eventId {
+                Button(action: {
+                    showCancelAlert = true
+                }) {
+                    Text("Cancel Registration")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.red)
+                        .cornerRadius(12)
+                }
+                .alert("Cancel Registration", isPresented: $showCancelAlert) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Confirm", role: .destructive) {
+                        Task {
+                            await cancelRegistration(eventId: eventId)
+                        }
+                    }
+                } message: {
+                    Text("Are you sure you want to cancel your registration for '\(notification.eventTitle ?? "this event")'?")
+                }
             }
             
             Button(action: { showSheet = false }) {
@@ -398,5 +533,14 @@ struct ActionButtons: View {
         .padding(.horizontal, 16)
         .padding(.top, 20)
         .padding(.bottom, 24)
+    }
+    
+    private func cancelRegistration(eventId: Int) async {
+        let eventService = AppConfig.makeEventService()
+        do {
+            try await eventService.unregisterFromEvent(eventId: eventId)
+            showSheet = false
+        } catch {
+        }
     }
 }

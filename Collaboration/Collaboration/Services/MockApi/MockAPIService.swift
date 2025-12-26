@@ -123,6 +123,20 @@ class MockAPIService {
         return mockData.mockUsers[0]
     }
     
+    func getMyRegistrations() -> [RegistrationDto] {
+        return [
+            RegistrationDto(
+                id: 1,
+                eventId: 1,
+                eventTitle: "Team Building Workshop",
+                userId: 1,
+                userFullName: "Test User",
+                statusName: "Confirmed",
+                registeredAt: "2025-12-20T10:00:00Z"
+            )
+        ]
+    }
+    
     func getUpcomingEvents() async throws -> [EventListDto] {
         try await simulateNetworkDelay()
         return mockData.getUpcomingEvents()
@@ -305,21 +319,15 @@ class MockAPIService {
         
         return [
             EventRegistrationDto(
-                registrationId: 1,
-                userId: 1,
-                userName: "John Doe",
-                userEmail: "john.doe@company.com",
-                status: "Confirmed",
-                registeredAt: "2024-12-15T10:00:00Z"
-            ),
-            EventRegistrationDto(
-                registrationId: 2,
-                userId: 4,
-                userName: "Bob Wilson",
-                userEmail: "bob.wilson@company.com",
-                status: "Confirmed",
-                registeredAt: "2024-12-16T14:30:00Z"
+                id: 101,
+                eventId: 50,
+                eventTitle: "SwiftUI Architecture Workshop",
+                userId: 7,
+                userFullName: "John Doe",
+                statusName: "Confirmed",
+                registeredAt: "2025-12-27T11:12:48Z"
             )
+            
         ]
     }
     
@@ -336,6 +344,46 @@ class MockAPIService {
             CategoryDto(id: 7, title: "Wellness", totalEvents: 9),
             CategoryDto(id: 8, title: "Networking", totalEvents: 5)
         ]
+    }
+    
+    func getNotifications() -> NotificationsResponse {
+        return NotificationsResponse(
+            new: [
+                NotificationDto(
+                    id: 1,
+                    title: "Registration Confirmed",
+                    message: "You have successfully registered for 'Leadership Workshop: Effective Communication'. Your spot is confirmed!",
+                    type: "Registration",
+                    eventId: 1,
+                    eventTitle: "Leadership Workshop: Effective Communication",
+                    isSeen: false,
+                    createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-900))
+                ),
+                NotificationDto(
+                    id: 2,
+                    title: "Event Reminder",
+                    message: "Annual Team Building Summit starts in 24 hours. Don't forget to join!",
+                    type: "Reminder",
+                    eventId: 2,
+                    eventTitle: "Annual Team Building Summit",
+                    isSeen: false,
+                    createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600))
+                )
+            ],
+            earlier: [
+                NotificationDto(
+                    id: 3,
+                    title: "Event Update",
+                    message: "The location for 'Happy Friday: Game Night' has been changed to the Recreation Lounge.",
+                    type: "Update",
+                    eventId: 3,
+                    eventTitle: "Happy Friday: Game Night",
+                    isSeen: true,
+                    createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400))
+                )
+            ],
+            totalUnseenCount: 2
+        )
     }
 }
 

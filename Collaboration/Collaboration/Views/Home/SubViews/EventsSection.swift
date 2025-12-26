@@ -15,7 +15,7 @@ struct EventsSection: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Text("Upcoming Events")
-                    .font(.system(size: 24, weight: .regular))
+                    .font(.system(size: 22, weight: .regular))
                 Spacer()
                 
                 Button("View all") {

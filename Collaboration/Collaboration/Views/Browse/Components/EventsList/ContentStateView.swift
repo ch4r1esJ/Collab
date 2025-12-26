@@ -20,7 +20,7 @@ struct ContentStateView: View {
             } else if isLoading && events.isEmpty {
                 LoadingStateView()
             } else if events.isEmpty {
-                EmptyStateView()
+                EmptyStateViewss()
             } else {
                 EventsListView(events: events)
             }

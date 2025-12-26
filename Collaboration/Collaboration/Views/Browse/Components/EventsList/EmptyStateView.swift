@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct EmptyStateView: View {
+struct EmptyStateViewss: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.exclamationmark")

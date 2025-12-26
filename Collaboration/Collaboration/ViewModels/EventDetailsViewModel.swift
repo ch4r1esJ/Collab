@@ -15,8 +15,9 @@ class EventDetailsViewModel: ObservableObject {
     @Published var isRegistering: Bool = false
     @Published var showRegistrationSuccess: Bool = false
     @Published var errorMessage: String?
-    
+    @Published var waitlistCount: Int = 0
     @Published var isRegistered: Bool = false
+    @Published var registrationStatus: String?
     
     private let eventId: Int
     private let eventService: EventServiceProtocol
@@ -27,9 +28,7 @@ class EventDetailsViewModel: ObservableObject {
     }
     
     func loadEvent() async {
-        guard !isLoading else {
-            return
-        }
+        guard !isLoading else { return }
         
         isLoading = true
         errorMessage = nil
@@ -45,6 +44,7 @@ class EventDetailsViewModel: ObservableObject {
             self.event = eventDetails
             
             await checkRegistration()
+            await loadWaitlistCount()
             
         } catch {
             errorMessage = "Failed to load event details"
@@ -53,29 +53,65 @@ class EventDetailsViewModel: ObservableObject {
         isLoading = false
     }
     
-    func checkRegistration() async {
+    func loadWaitlistCount() async {
+        
+        guard event?.eventStatus == "Waitlisted" || event?.availableSlots == 0 else {
+            waitlistCount = 0
+            return
+        }
+        
         do {
-            let status = try await eventService.checkRegistration(eventId: eventId)
+            let registrations = try await eventService.getEventRegistrations(eventId: eventId)
+            
             
             guard !Task.isCancelled else { return }
             
-            self.isRegistered = status.isRegistered
+            let waitlistedCount = registrations.filter { $0.statusName == "Waitlisted" }.count
+            
+            self.waitlistCount = waitlistedCount
+        } catch {
+            self.waitlistCount = 0
+        }
+    }
+    
+    func checkRegistration() async {
+        do {
+            let checkResult = try await eventService.checkRegistration(eventId: eventId)
+            
+            guard !Task.isCancelled else { return }
+            
+            if checkResult.isRegistered {
+                let myRegistrations = try await eventService.getMyRegistrations()
+                
+                guard !Task.isCancelled else { return }
+                
+                if let registration = myRegistrations.first(where: { $0.eventId == eventId }) {
+                    self.isRegistered = registration.statusName != "Cancelled"
+                    self.registrationStatus = registration.statusName
+                } else {
+                    self.isRegistered = true
+                    self.registrationStatus = "Confirmed"
+                }
+            } else {
+                self.isRegistered = false
+                self.registrationStatus = nil
+            }
         } catch {
             self.isRegistered = false
+            self.registrationStatus = nil
         }
     }
     
     func registerForEvent() async {
-        guard let event = event else { return }
-        guard !isRegistering else { return }
-        
-        if isRegistered {
-            errorMessage = "You are already registered for this event"
+        guard let event = event else {
+            return
+        }
+        guard !isRegistering else {
             return
         }
         
-        guard event.availableSlots > 0 else {
-            errorMessage = "No spots available"
+        if isRegistered {
+            errorMessage = "You are already registered for this event"
             return
         }
         
@@ -89,13 +125,14 @@ class EventDetailsViewModel: ObservableObject {
         
         do {
             let response = try await eventService.registerForEvent(eventId: eventId, userId: userId)
-            
+                        
             guard !Task.isCancelled else {
                 isRegistering = false
                 return
             }
             
             self.isRegistered = true
+            self.registrationStatus = response.status
             self.showRegistrationSuccess = true
             
             await loadEvent()
@@ -124,6 +161,7 @@ class EventDetailsViewModel: ObservableObject {
             }
             
             self.isRegistered = false
+            self.registrationStatus = nil
             
             await loadEvent()
         } catch is CancellationError {
@@ -146,14 +184,20 @@ class EventDetailsViewModel: ObservableObject {
     
     func canRegister() -> Bool {
         guard let event = event else { return false }
-        return !isRegistered && event.availableSlots > 0 && !isRegistering && event.isRegistrationOpen
+        return !isRegistered && !isRegistering && event.isRegistrationOpen
     }
     
     func buttonState() -> RegistrationButtonState {
         if isRegistered {
-            return .registered
-        } else if event?.availableSlots == 0 {
-            return .full
+            if registrationStatus == "Waitlisted" {
+                return .waitlisted
+            } else if registrationStatus == "Confirmed" {
+                return .registered
+            } else {
+                return event?.availableSlots == 0 ? .waitlist : .available
+            }
+        } else if event?.eventStatus == "Waitlisted" || event?.eventStatus == "Full" || event?.availableSlots == 0 {
+            return .waitlist
         } else {
             return .available
         }
@@ -163,6 +207,8 @@ class EventDetailsViewModel: ObservableObject {
 enum RegistrationButtonState {
     case available
     case registered
+    case waitlist
+    case waitlisted
     case full
 }
 
@@ -191,10 +237,20 @@ extension EventListDto {
         return "\(start) - \(end)"
     }
     
-    var registrationInfo: String {
-        return "\(currentCapacity) registered • \(availableSlots) spot\(availableSlots == 1 ? "" : "s") left"
+    func registrationInfo(waitlistCount: Int = 0) -> String {
+        var info = "\(currentCapacity) registered"
+        
+        if availableSlots > 0 {
+            info += " • \(availableSlots) spot\(availableSlots == 1 ? "" : "s") left"
+        } else if waitlistCount > 0 {
+            info += " • \(waitlistCount) on waitlist"
+        } else {
+            info += " • Full"
+        }
+        
+        return info
     }
-    
+        
     var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"

@@ -8,7 +8,7 @@
 import Foundation
 
 class RealAuthService: AuthServiceProtocol {
-    private let baseURL = "http://localhost:5282/api"
+    private let baseURL = "http://63.178.226.237:3000/api"
     private let tokenManager = TokenManager.shared
     
     private func makeRequest<T: Decodable>(
@@ -137,12 +137,21 @@ class RealAuthService: AuthServiceProtocol {
         }
     }
     
-    func register(email: String, password: String, firstName: String, lastName: String) async throws {
+    func register(
+        email: String,
+        password: String,
+        firstName: String,
+        lastName: String,
+        phoneNumber: String,
+        departmentId: Int
+    ) async throws {
         let request = RegisterRequest(
             email: email,
             password: password,
             firstName: firstName,
-            lastName: lastName
+            lastName: lastName,
+            phoneNumber: phoneNumber,
+            departmentId: departmentId
         )
         
         try await makeVoidRequest(
@@ -167,28 +176,34 @@ class RealAuthService: AuthServiceProtocol {
     }
     
     func verifyOTP(code: String) async throws -> Bool {
-        let request = OTPRequest(code: code)
+        let request = OTPRequest(otp: code)
         
-        let (data, response) = try await URLSession.shared.data(
-            for: try createRequest(endpoint: "/Auth/check-otp", method: "POST", body: request)
-        )
+        guard let url = URL(string: "\(baseURL)/Auth/check-otp") else {
+            throw APIError.invalidResponse
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             throw APIError.invalidResponse
         }
         
-        if let jsonString = String(data: data, encoding: .utf8),
-           let isValid = Bool(jsonString) {
-            return isValid
-        }
-        
-        if let otpResponse = try? JSONDecoder().decode(OTPResponse.self, from: data) {
-            return otpResponse.isValid
+        if let jsonString = String(data: data, encoding: .utf8) {
+            return jsonString.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"
         }
         
         throw APIError.invalidResponse
     }
+    
+    func getDepartments() async throws -> [DepartmentDto] {
+            return try await makeRequest(endpoint: "/Auth/departments")
+        }
     
     func sendPasswordResetLink(email: String) async throws {
         let request = PasswordResetRequest(email: email)

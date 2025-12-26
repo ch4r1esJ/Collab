@@ -8,7 +8,7 @@
 import Foundation
 
 struct OTPRequest: Encodable {
-    let code: String
+    let otp: String
 }
 
 struct OTPResponse: Codable {

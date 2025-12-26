@@ -28,6 +28,7 @@ struct RegistrationDto: Codable {
     var registrationId: Int { id }
 }
 
+
 struct UserRegistrationDto: Codable, Identifiable {
     let id: Int
     let eventId: Int
@@ -42,10 +43,11 @@ struct UserRegistrationDto: Codable, Identifiable {
 }
 
 struct EventRegistrationDto: Codable {
-    let registrationId: Int
+    let id: Int
+    let eventId: Int
+    let eventTitle: String
     let userId: Int
-    let userName: String
-    let userEmail: String
-    let status: String
+    let userFullName: String
+    let statusName: String
     let registeredAt: String
 }

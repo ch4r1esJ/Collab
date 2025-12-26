@@ -12,6 +12,14 @@ struct RegisterRequest: Encodable {
     let password: String
     let firstName: String
     let lastName: String
+    let phoneNumber: String
+    let departmentId: Int
+}
+
+struct DepartmentDto: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let description: String
 }
 
 enum Department: String, Codable, CaseIterable {

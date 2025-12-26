@@ -156,11 +156,39 @@ class RealEventService: EventServiceProtocol {
         try await makeRequest(endpoint: "/api/Registration/my-registrations")
     }
     
+    func getMyRegistrations() async throws -> [RegistrationDto] {
+        try await makeRequest(endpoint: "/api/Registration/my-registrations")
+    }
+    
     func getEventRegistrations(eventId: Int) async throws -> [EventRegistrationDto] {
         try await makeRequest(endpoint: "/api/Registration/event/\(eventId)")
     }
     
     func getCategories() async throws -> [CategoryDto] {
         try await makeRequest(endpoint: "/api/Events/categories")
+    }
+    
+    func getNotifications() async throws -> NotificationsResponse {
+        try await makeRequest(endpoint: "/api/Notification/my-notifications")
+    }
+
+    func getUnreadCount() async throws -> UnreadCountResponse {
+        try await makeRequest(endpoint: "/api/Notification/unread-count")
+    }
+
+    func markAsRead(notificationId: Int) async throws {
+        struct EmptyResponse: Codable {}
+        let _: EmptyResponse = try await makeRequest(
+            endpoint: "/api/Notification/\(notificationId)/mark-as-read",
+            method: "POST"
+        )
+    }
+
+    func deleteNotification(notificationId: Int) async throws {
+        struct EmptyResponse: Codable {}
+        let _: EmptyResponse = try await makeRequest(
+            endpoint: "/api/Notification/\(notificationId)",
+            method: "DELETE"
+        )
     }
 }

@@ -132,7 +132,11 @@ struct SignInView: View {
             Spacer()
             
             NavigationLink {
-                ForgotPasswordView()
+                ForgotPasswordView(onPasswordReset: { email, password in
+                    viewModel.email = email
+                    viewModel.password = password
+                    viewModel.successMessage = "Password reset successful! Your temporary password is: Password123"
+                })
             } label: {
                 Text("Forgot password?")
                     .font(.system(size: 14))
@@ -152,7 +156,7 @@ struct SignInView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(viewModel.isFormValid ? Color.black : Color.gray)
+                .background(viewModel.isFormValid ? Color("button") : Color.gray)
                 .cornerRadius(8)
         }
         .disabled(!viewModel.isFormValid || viewModel.isLoading)

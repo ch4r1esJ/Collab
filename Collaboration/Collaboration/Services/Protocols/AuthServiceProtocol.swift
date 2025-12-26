@@ -8,12 +8,21 @@
 import Foundation
 
 protocol AuthServiceProtocol {
-    func register(email: String, password: String, firstName: String, lastName: String) async throws
+    
+    func register(
+            email: String,
+            password: String,
+            firstName: String,
+            lastName: String,
+            phoneNumber: String,
+            departmentId: Int
+        ) async throws
     
     func login(email: String, password: String) async throws -> LoginResponse
     
     func verifyOTP(code: String) async throws -> Bool
-    
+    func getDepartments() async throws -> [DepartmentDto]
+        
     func sendPasswordResetLink(email: String) async throws
     
     func getCurrentUser() async throws -> UserProfileDto

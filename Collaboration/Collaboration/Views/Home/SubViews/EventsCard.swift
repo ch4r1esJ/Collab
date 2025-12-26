@@ -26,27 +26,44 @@ struct EventCard: View {
             EventDateView(month: formattedMonth, day: formattedDay)
                 .frame(width: 50)
             
-            VStack(alignment: .leading, spacing: 12) {
-                EventTitleView(title: event.title)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(event.title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 
-                TimeView(time: formattedTime, location: event.location)
-                    .font(.system(size: 14, weight: .light))
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 14))
+                    Text(event.timeRange)
+                        .font(.system(size: 14))
+                }
+                .foregroundColor(.secondary)
+                
+                HStack(alignment: .top, spacing: 4) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 14))
+                    Text(event.location)
+                        .font(.system(size: 14))
+                        .lineLimit(1)
+                }
+                .foregroundColor(.secondary)
                 
                 if !event.description.isEmpty {
                     Text(event.description)
-                        .font(.system(size: 15, weight: .light))
+                        .font(.system(size: 14))
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
                 
                 HStack {
-                    Label {
-                        Text("\(event.currentCapacity) registered • \(spotsLeftText)")
-                    } icon: {
+                    HStack(spacing: 4) {
                         Image(systemName: "person.2")
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 13))
+                        Text("\(event.currentCapacity) registered • \(spotsLeftText)")
+                            .font(.system(size: 13))
                     }
-                    .font(.system(size: 13, weight: .light))
+                    .foregroundColor(.secondary)
                     
                     Spacer()
                     
@@ -54,7 +71,7 @@ struct EventCard: View {
                         Text("View Details")
                         Image(systemName: "arrow.right")
                     }
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.blue)
                 }
                 .padding(.top, 4)
@@ -97,7 +114,7 @@ struct EventCard: View {
     private var formattedMonth: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM"
-        return formatter.string(from: eventDate)
+        return formatter.string(from: eventDate).uppercased()
     }
     
     private var formattedDay: String {
@@ -119,45 +136,11 @@ struct EventDateView: View {
     
     var body: some View {
         VStack(spacing: 4) {
-            Text(month.uppercased())
-                .font(.system(size: 14, weight: .light))
+            Text(month)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
             Text(day)
-                .font(.system(size: 28, weight: .medium))
-        }
-    }
-}
-
-struct EventTitleView: View {
-    var title: String
-    
-    var body: some View {
-        Text(title)
-            .font(.system(size: 18, weight: .medium))
-            .padding(.trailing, 70)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-struct TimeView: View {
-    var time: String
-    var location: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 4) {
-                Image(systemName: "clock")
-                Text(time)
-            }
-            
-            HStack(alignment: .top, spacing: 4) {
-                Image("map")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 17, height: 17)
-                Text(location)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-            }
+                .font(.system(size: 28, weight: .bold))
         }
     }
 }

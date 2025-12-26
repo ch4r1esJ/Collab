@@ -23,13 +23,6 @@ struct EventDetailsView: View {
             .task {
                 await viewModel.loadEvent()
             }
-            .alert("Registration Successful", isPresented: $viewModel.showRegistrationSuccess) {
-                Button("OK") {
-                    viewModel.cancelRegistration()
-                }
-            } message: {
-                Text("You have successfully registered for this event!")
-            }
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil && !viewModel.isLoading)) {
                 Button("OK") {
                     viewModel.dismissError()

@@ -8,32 +8,43 @@
 import SwiftUI
 
 struct RegistrationDepartmentPicker: View {
-    @Binding var selectedDepartment: String
+    let departments: [DepartmentDto]
+    @Binding var selectedDepartment: DepartmentDto?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Department")
-                .font(.system(size: 14))
-                .foregroundColor(.primary)
+            HStack(spacing: 4) {
+                Image(systemName: "building.2")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+                Text("Department")
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
+            }
+            
             Menu {
-                Button("Engineering") { selectedDepartment = "Engineering" }
-                Button("Marketing") { selectedDepartment = "Marketing" }
-                Button("Sales") { selectedDepartment = "Sales" }
-                Button("Customer Service") { selectedDepartment = "Customer Service"}
-                Button("IT") { selectedDepartment = "IT"}
-                Button("HR") { selectedDepartment = "HR" }
+                ForEach(departments) { department in
+                    Button(action: {
+                        selectedDepartment = department
+                    }) {
+                        HStack {
+                            Text(department.name)
+                            if selectedDepartment?.id == department.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
             } label: {
                 HStack {
-                    Text(selectedDepartment)
-                        .font(.system(size: 15))
-                        .foregroundColor(selectedDepartment == "Select Department" ? .gray : .primary)
+                    Text(selectedDepartment?.name ?? "Select Department")
+                        .foregroundColor(selectedDepartment == nil ? .gray : .primary)
                     Spacer()
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12))
                         .foregroundColor(.gray)
                 }
-                .frame(height: 48)
-                .padding(.horizontal, 16)
+                .padding()
                 .background(Color.white)
                 .cornerRadius(8)
                 .overlay(

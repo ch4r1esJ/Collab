@@ -22,8 +22,15 @@ protocol EventServiceProtocol {
     
     func registerForEvent(eventId: Int, userId: Int) async throws -> RegistrationResponse
     func checkRegistration(eventId: Int) async throws -> RegistrationCheckDto
+    func getMyRegistrations() async throws -> [RegistrationDto]
+    
     func unregisterFromEvent(eventId: Int) async throws
     
     func getUserRegistrations(userId: Int) async throws -> [UserRegistrationDto]
     func getEventRegistrations(eventId: Int) async throws -> [EventRegistrationDto]
+    
+    func getNotifications() async throws -> NotificationsResponse
+        func getUnreadCount() async throws -> UnreadCountResponse
+        func markAsRead(notificationId: Int) async throws
+        func deleteNotification(notificationId: Int) async throws
 }

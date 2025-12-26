@@ -85,8 +85,11 @@ struct SignUpView: View {
                 otpSection
             }
             
-//            RegistrationDepartmentPicker(selectedDepartment: $viewModel.department.rawValue)
-            
+            RegistrationDepartmentPicker(
+                departments: viewModel.departments,
+                selectedDepartment: $viewModel.selectedDepartment
+            )
+                        
             RegistrationPasswordField(
                 password: $viewModel.password,
                 showPassword: $showPassword
@@ -156,20 +159,31 @@ struct SignUpView: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                     .font(.system(size: 11))
-                    .foregroundColor(viewModel.timeRemaining > 0 ? .gray : .red)
-                Text("Code expires in \(formattedTime)")
-                    .font(.system(size: 13))
-                    .foregroundColor(viewModel.timeRemaining > 0 ? .gray : .red)
+                    .foregroundColor(viewModel.isOTPExpired ? .red : .gray)
+                
+                if viewModel.isOTPExpired {
+                    Text("Code expired")
+                        .font(.system(size: 13))
+                        .foregroundColor(.red)
+                } else {
+                    Text("Code expires in \(formattedTime)")
+                        .font(.system(size: 13))
+                        .foregroundColor(.gray)
+                }
             }
             
             Spacer()
             
-            Button(action: { Task { await viewModel.resendOTP() } }) {
+            Button(action: {
+                Task {
+                    await viewModel.resendOTP()
+                }
+            }) {
                 Text("Resend Code")
                     .font(.system(size: 13))
-                    .foregroundColor(viewModel.timeRemaining == 0 ? .blue : .gray)
+                    .foregroundColor(viewModel.isOTPExpired ? .blue : .gray)
             }
-            .disabled(viewModel.timeRemaining > 0)
+            .disabled(!viewModel.isOTPExpired)
         }
     }
     
@@ -239,7 +253,7 @@ struct SignUpView: View {
                     .frame(height: 52)
             }
         }
-        .background(viewModel.isFormValid ? Color.black : Color.gray)
+        .background(viewModel.isFormValid ? Color("button") : Color.gray)
         .cornerRadius(8)
         .disabled(!viewModel.isFormValid || viewModel.isLoading)
         .padding(.top, 8)
