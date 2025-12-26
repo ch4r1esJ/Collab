@@ -7,37 +7,44 @@
 
 import Foundation
 
-struct LoginRequest: Codable {
+struct LoginRequest: Encodable {
     let email: String
     let password: String
-//    let rememberMe: Bool
-}
-
-struct AuthResponse: Codable {
-    let token: String
-//    let user: User
-//    let userId: String
 }
 
 struct LoginResponse: Codable {
     let token: String
-    let userId: String
+    let userId: Int
+    let email: String
     let fullName: String
-    let role: String
-//    let expiresAt: String
+    let department: String
+    let isAdmin: Bool
+    let expiresAt: String
 }
 
-struct User: Codable {
-    let id: String
+struct UserProfileDto: Codable {
+    let id: Int
     let email: String
-//    let firstName: String
-//    let lastName: String
-    var fullName: String /*{ "\(firstName) \(lastName)" }*/
-    let role: String
-//    let phoneNumber: String?
-//    let department: String?
-//    let isActive: Bool
-//    let createdAt: Date
+    let fullName: String
+    let department: String
+    let isAdmin: Bool
+    
+    var firstName: String {
+        fullName.components(separatedBy: " ").first ?? fullName
+    }
+    
+    var lastName: String {
+        let components = fullName.components(separatedBy: " ")
+        return components.count > 1 ? components.dropFirst().joined(separator: " ") : ""
+    }
+}
+
+struct PasswordResetRequest: Encodable {
+    let email: String
+}
+
+struct PasswordResetResponse: Codable {
+    let message: String
 }
 
 struct ForgotPasswordRequest: Codable {

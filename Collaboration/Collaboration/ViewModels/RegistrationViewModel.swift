@@ -9,9 +9,6 @@ import Foundation
 import SwiftUI
 import Combine
 
-import Foundation
-import SwiftUI
-
 @MainActor
 class RegistrationViewModel: ObservableObject {
     
@@ -20,14 +17,15 @@ class RegistrationViewModel: ObservableObject {
     @Published var email = ""
     @Published var phoneNumber = ""
     @Published var otpCode = ["", "", "", "", "", ""]
-    @Published var department: Department = .hr
+    @Published var selectedDepartment: DepartmentDto?
+    @Published var departments: [DepartmentDto] = []
     @Published var password = ""
     @Published var confirmPassword = ""
     @Published var agreedToTerms = false
     
     @Published var isOTPSent = false
     @Published var isOTPVerified = false
-    @Published var timeRemaining = 0
+    @Published var timeRemaining = 60
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -36,11 +34,21 @@ class RegistrationViewModel: ObservableObject {
     
     @Published var phoneNumberError: String?
     @Published var showPhoneError = false
+    @Published var registrationSuccessful = false
     
     private var storedOTP: String?
     private var otpPhoneNumber: String?
-    private var authToken: String?
-    private var currentUser: User?
+    
+    private let authService: AuthServiceProtocol
+    private let tokenManager = TokenManager.shared
+    
+    init(authService: AuthServiceProtocol = AppConfig.makeAuthService()) {
+        self.authService = authService
+        
+        Task {
+            await loadDepartments()
+        }
+    }
     
     var otpCodeString: String {
         otpCode.joined()
@@ -50,16 +58,29 @@ class RegistrationViewModel: ObservableObject {
         "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
     }
     
+    var isOTPExpired: Bool {
+        timeRemaining == 0 && isOTPSent
+    }
+    
     var isFormValid: Bool {
         !firstName.isEmpty &&
         !lastName.isEmpty &&
         Validator.isValidEmail(email) &&
         Validator.isValidPhone(phoneNumber) &&
         isOTPVerified &&
-        otpCodeString.count == AppConstants.OTP.codeLength &&
+        selectedDepartment != nil &&
         Validator.isValidPassword(password).isValid &&
         password == confirmPassword &&
         agreedToTerms
+    }
+    
+    func loadDepartments() async {
+        do {
+            departments = try await authService.getDepartments()
+            selectedDepartment = departments.first
+        } catch {
+            errorMessage = "Failed to load departments"
+        }
     }
     
     func handlePhoneNumberChange(_ newValue: String) {
@@ -97,17 +118,12 @@ class RegistrationViewModel: ObservableObject {
         
         isLoading = true
         
-        try? await Task.sleep(nanoseconds: AppConstants.Animation.loadingDelay)
-        
-        let otp = String(format: "%06d", Int.random(in: 100000...999999))
-        storedOTP = otp
-        otpPhoneNumber = phoneNumber
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
         
         isOTPSent = true
-        timeRemaining = AppConstants.OTP.expirationSeconds
-        successMessage = String(format: Strings.Success.otpSent, phoneNumber)
-        
-        print("📱 OTP: \(otp)")
+        otpPhoneNumber = phoneNumber
+        timeRemaining = 60
+        successMessage = "OTP code sent to \(phoneNumber)."
         
         isLoading = false
     }
@@ -124,17 +140,26 @@ class RegistrationViewModel: ObservableObject {
             return
         }
         
+        if isOTPExpired {
+            errorMessage = "OTP code has expired. Please request a new code."
+            otpCode = ["", "", "", "", "", ""]
+            return
+        }
+        
         isLoading = true
         
-        try? await Task.sleep(nanoseconds: 800_000_000)
-        
-        if otpCodeString == storedOTP || otpCodeString == "123456" {
-            isOTPVerified = true
-            successMessage = Strings.Success.phoneVerified
-            storedOTP = nil
-            otpPhoneNumber = nil
-        } else {
-            errorMessage = Strings.Error.invalidOTP
+        do {
+            let isValid = try await authService.verifyOTP(code: otpCodeString)
+            
+            if isValid {
+                isOTPVerified = true
+                successMessage = "Phone verified successfully!"
+            } else {
+                errorMessage = "Invalid OTP code"
+                otpCode = ["", "", "", "", "", ""]
+            }
+        } catch {
+            errorMessage = "OTP verification failed"
             otpCode = ["", "", "", "", "", ""]
         }
         
@@ -149,56 +174,71 @@ class RegistrationViewModel: ObservableObject {
         
         isLoading = true
         
-        try? await Task.sleep(nanoseconds: AppConstants.Animation.loadingDelay)
-        
-        let otp = String(format: "%06d", Int.random(in: 100000...999999))
-        storedOTP = otp
-        otpPhoneNumber = phoneNumber
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
         
         isOTPSent = true
-        timeRemaining = AppConstants.OTP.expirationSeconds
-        successMessage = String(format: Strings.Success.otpSent, phoneNumber)
+        otpPhoneNumber = phoneNumber
+        timeRemaining = 60
+        isOTPVerified = false
+        
+        successMessage = "New OTP code sent to \(phoneNumber)."
         
         otpCode = ["", "", "", "", "", ""]
-        
-        print("📱 OTP: \(otp)")
         
         isLoading = false
     }
     
     func register() async {
-        if !isFormValid {
-            errorMessage = getValidationErrors()
+        guard isFormValid else {
+            errorMessage = "Please fill all fields correctly"
+            return
+        }
+        
+        guard let department = selectedDepartment else {
+            errorMessage = "Please select a department"
             return
         }
         
         isLoading = true
+        errorMessage = nil
         
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        
-        let request = RegisterRequest(
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            phoneNumber: phoneNumber,
-            otpCode: otpCodeString,
-            department: department.rawValue,
-            password: password,
-            agree: agreedToTerms
-        )
-        
-        let mockUser = User(
-            id: "3",
-            email: request.email,
-            fullName: request.firstName,
-            role: request.phoneNumber
-        )
-        
-        authToken = "mock_token_\(UUID().uuidString)"
-        currentUser = mockUser
-        
-        successMessage = Strings.Success.welcome(name: mockUser.fullName)
-        isRegistered = true
+        do {
+            try await authService.register(
+                email: email,
+                password: password,
+                firstName: firstName,
+                lastName: lastName,
+                phoneNumber: phoneNumber,
+                departmentId: department.id
+            )
+            
+            registrationSuccessful = true
+            successMessage = "Account created successfully! Please sign in."
+            
+        } catch let error as APIError {
+            
+            switch error {
+            case .badRequest(let response):
+                
+                if response.message == "Bad request" {
+                    errorMessage = "This email is already registered. Please use a different email or sign in."
+                } else if let details = response.details,
+                   let firstError = details.values.first?.first {
+                    errorMessage = firstError
+                } else {
+                    errorMessage = response.message
+                }
+                
+            case .conflict(let message):
+                errorMessage = message
+                
+            default:
+                errorMessage = error.errorMessage
+            }
+            
+        } catch {
+            errorMessage = "Registration failed. Please try again."
+        }
         
         isLoading = false
     }
@@ -209,7 +249,7 @@ class RegistrationViewModel: ObservableObject {
         email = ""
         phoneNumber = ""
         otpCode = ["", "", "", "", "", ""]
-        department = .hr
+        selectedDepartment = departments.first
         password = ""
         confirmPassword = ""
         agreedToTerms = false
@@ -222,47 +262,5 @@ class RegistrationViewModel: ObservableObject {
         successMessage = nil
         phoneNumberError = nil
         showPhoneError = false
-    }
-    
-    func getAuthToken() -> String? {
-        return authToken
-    }
-    
-    func getCurrentUser() -> User? {
-        return currentUser
-    }
-    
-    private func getValidationErrors() -> String {
-        var errors: [String] = []
-        
-        if firstName.isEmpty {
-            errors.append(Strings.Error.firstNameRequired)
-        }
-        if lastName.isEmpty {
-            errors.append(Strings.Error.lastNameRequired)
-        }
-        if !Validator.isValidEmail(email) {
-            errors.append(Strings.Error.invalidEmail)
-        }
-        if !Validator.isValidPhone(phoneNumber) {
-            errors.append(Strings.Error.invalidPhoneNumber)
-        }
-        if !isOTPVerified {
-            errors.append(Strings.Error.phoneNotVerified)
-        }
-        
-        let passwordCheck = Validator.isValidPassword(password)
-        if !passwordCheck.isValid {
-            errors.append(contentsOf: passwordCheck.errors)
-        }
-        
-        if password != confirmPassword {
-            errors.append(Strings.Error.passwordMismatch)
-        }
-        if !agreedToTerms {
-            errors.append(Strings.Error.termsRequired)
-        }
-        
-        return errors.joined(separator: "\n")
     }
 }

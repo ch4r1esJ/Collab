@@ -36,7 +36,9 @@ struct SignInView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .alert("Success", isPresented: .constant(viewModel.successMessage != nil)) {
-            Button("OK") { viewModel.successMessage = nil }
+            Button("OK") {
+                viewModel.successMessage = nil
+            }
         } message: {
             Text(viewModel.successMessage ?? "")
         }
@@ -129,15 +131,12 @@ struct SignInView: View {
             
             Spacer()
             
-//            Button(action: {
-//                Task { await viewModel.forgotPassword() }
-//            }) {
-//                Text("Forgot password?")
-//                    .font(.system(size: 14))
-//                    .foregroundColor(.black)
-//            }
             NavigationLink {
-                ForgotPasswordView()
+                ForgotPasswordView(onPasswordReset: { email, password in
+                    viewModel.email = email
+                    viewModel.password = password
+                    viewModel.successMessage = "Password reset successful! Your temporary password is: Password123"
+                })
             } label: {
                 Text("Forgot password?")
                     .font(.system(size: 14))
@@ -148,15 +147,16 @@ struct SignInView: View {
     
     private var signInButton: some View {
         Button(action: {
-            Task { await viewModel.login() }
-            coordinator.login()
+            Task {
+                await viewModel.login(coordinator: coordinator)
+            }
         }) {
             Text("Sign In")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(viewModel.isFormValid ? Color.black : Color.gray)
+                .background(viewModel.isFormValid ? Color("button") : Color.gray)
                 .cornerRadius(8)
         }
         .disabled(!viewModel.isFormValid || viewModel.isLoading)
@@ -188,3 +188,9 @@ struct SignInView: View {
     }
 }
 
+#Preview {
+    NavigationStack {
+        SignInView()
+            .environmentObject(AppCoordinator())
+    }
+}

@@ -8,9 +8,7 @@
 import SwiftUI
 
 @main
-struct CollaborationApp: App {
-    @StateObject private var authViewModel = AuthViewModel(authService: MockAuthService())
-    
+struct CollaborationApp: App {    
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView()

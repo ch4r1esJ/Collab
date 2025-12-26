@@ -7,35 +7,10 @@
 
 import Foundation
 
-// MARK: - Send OTP Request
-struct SendOTPRequest: Encodable {
-    let phoneNumber: String
+struct OTPRequest: Encodable {
+    let otp: String
 }
 
-// MARK: - Send OTP Response
-struct SendOTPResponse: Decodable {
-    let success: Bool
-    let expiresAt: String
-    let message: String?
+struct OTPResponse: Codable {
+    let isValid: Bool
 }
-
-// MARK: - Verify OTP Request
-struct VerifyOTPRequest: Encodable {
-    let phoneNumber: String
-    let code: String
-}
-
-// MARK: - Verify OTP Response
-struct VerifyOTPResponse: Decodable {
-    let success: Bool
-    let token: String?
-    let message: String?
-}
-
-// MARK: - Resend OTP Request
-struct ResendOTPRequest: Encodable {
-    let phoneNumber: String
-}
-
-// MARK: - Resend OTP Response
-//typealias ResendOTPResponse = SendOTPResponse

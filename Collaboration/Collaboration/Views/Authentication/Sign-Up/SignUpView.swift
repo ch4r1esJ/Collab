@@ -10,6 +10,8 @@ import Combine
 
 struct SignUpView: View {
     @StateObject private var viewModel = RegistrationViewModel()
+    @EnvironmentObject var coordinator: AppCoordinator
+    @Environment(\.dismiss) var dismiss
     @State private var showPassword = false
     @State private var showConfirmPassword = false
 
@@ -30,19 +32,21 @@ struct SignUpView: View {
                 loadingOverlay
             }
         }
-        .alert("Error", isPresented: Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.errorMessage = nil } }
-        )) {
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
         .alert("Success", isPresented: Binding(
             get: { viewModel.successMessage != nil },
-            set: { if !$0 { viewModel.successMessage = nil } }
+            set: { _ in viewModel.successMessage = nil }
         )) {
-            Button("OK") { viewModel.successMessage = nil }
+            Button("OK") {
+                if viewModel.registrationSuccessful {
+                    dismiss()
+                }
+                viewModel.successMessage = nil
+            }
         } message: {
             Text(viewModel.successMessage ?? "")
         }
@@ -50,7 +54,7 @@ struct SignUpView: View {
             if viewModel.timeRemaining > 0 && viewModel.isOTPSent {
                 viewModel.timeRemaining -= 1
             }
-        }
+        }.navigationBarBackButtonHidden(true)
     }
     
     private var headerSection: some View {
@@ -81,8 +85,11 @@ struct SignUpView: View {
                 otpSection
             }
             
-//            RegistrationDepartmentPicker(selectedDepartment: $viewModel.department)
-            
+            RegistrationDepartmentPicker(
+                departments: viewModel.departments,
+                selectedDepartment: $viewModel.selectedDepartment
+            )
+                        
             RegistrationPasswordField(
                 password: $viewModel.password,
                 showPassword: $showPassword
@@ -152,20 +159,31 @@ struct SignUpView: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                     .font(.system(size: 11))
-                    .foregroundColor(viewModel.timeRemaining > 0 ? .gray : .red)
-                Text("Code expires in \(formattedTime)")
-                    .font(.system(size: 13))
-                    .foregroundColor(viewModel.timeRemaining > 0 ? .gray : .red)
+                    .foregroundColor(viewModel.isOTPExpired ? .red : .gray)
+                
+                if viewModel.isOTPExpired {
+                    Text("Code expired")
+                        .font(.system(size: 13))
+                        .foregroundColor(.red)
+                } else {
+                    Text("Code expires in \(formattedTime)")
+                        .font(.system(size: 13))
+                        .foregroundColor(.gray)
+                }
             }
             
             Spacer()
             
-            Button(action: { Task { await viewModel.resendOTP() } }) {
+            Button(action: {
+                Task {
+                    await viewModel.resendOTP()
+                }
+            }) {
                 Text("Resend Code")
                     .font(.system(size: 13))
-                    .foregroundColor(viewModel.timeRemaining == 0 ? .blue : .gray)
+                    .foregroundColor(viewModel.isOTPExpired ? .blue : .gray)
             }
-            .disabled(viewModel.timeRemaining > 0)
+            .disabled(!viewModel.isOTPExpired)
         }
     }
     
@@ -217,7 +235,11 @@ struct SignUpView: View {
     }
     
     private var createAccountButton: some View {
-        Button(action: { Task { await viewModel.register() } }) {
+        Button(action: {
+            Task {
+                await viewModel.register()
+            }
+        }) {
             if viewModel.isLoading {
                 ProgressView()
                     .tint(.white)
@@ -231,7 +253,7 @@ struct SignUpView: View {
                     .frame(height: 52)
             }
         }
-        .background(viewModel.isFormValid ? Color.black : Color.gray)
+        .background(viewModel.isFormValid ? Color("button") : Color.gray)
         .cornerRadius(8)
         .disabled(!viewModel.isFormValid || viewModel.isLoading)
         .padding(.top, 8)
@@ -242,7 +264,9 @@ struct SignUpView: View {
             Text("Already have an account?")
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
-            Button("Sign In") {}
+            Button("Sign In") {
+                dismiss()
+            }
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primary)
         }
@@ -260,4 +284,3 @@ struct SignUpView: View {
         }
     }
 }
-

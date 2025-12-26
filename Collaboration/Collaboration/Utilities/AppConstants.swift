@@ -5,7 +5,6 @@
 //  Created by Rize on 20.12.25.
 //
 
-
 import Foundation
 
 enum AppConstants {

@@ -1,0 +1,135 @@
+//
+//  HomeViewModel.swift
+//  Collaboration
+//
+//  Created by Charles Janjgava on 12/23/25.
+//
+
+import Foundation
+import Combine
+
+@MainActor
+class HomeViewModel: ObservableObject {
+    
+    @Published var upcomingEvents: [EventListDto] = []
+    @Published var trendingEvents: [EventListDto] = []
+    @Published var categories: [EventTypeDto] = []
+    @Published var categoryList: [CategoryDto] = []
+    
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    
+    private let eventService: EventServiceProtocol
+    
+    init(eventService: EventServiceProtocol = AppConfig.makeEventService()) {
+        self.eventService = eventService
+    }
+    
+    func fetchData() async {
+        
+        guard !isLoading else {
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let upcoming = try await eventService.getUpcomingEvents()
+            
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            
+            let now = Date()
+            
+            self.upcomingEvents = upcoming
+                .filter { event in
+                    guard let eventDate = parseEventDate(event.startDateTime) else {
+                        return false
+                    }
+                    return eventDate > now
+                }
+                .sorted { event1, event2 in
+                    guard let date1 = parseEventDate(event1.startDateTime),
+                          let date2 = parseEventDate(event2.startDateTime) else {
+                        return false
+                    }
+                    return date1 < date2
+                }
+            
+            let cats = try await eventService.getCategories()
+            
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            
+            self.categoryList = cats
+            
+            let types = try await eventService.getEventTypes()
+            
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            
+            self.categories = types
+            
+            if self.upcomingEvents.count >= 3 {
+                let trendingIds = self.upcomingEvents
+                    .sorted { $0.currentCapacity > $1.currentCapacity }
+                    .prefix(3)
+                    .map { $0.id }
+                
+                await fetchTrendingEventDetails(ids: trendingIds)
+            }
+            
+        } catch is CancellationError {
+        } catch let error as APIError {
+            errorMessage = error.errorMessage
+        } catch {
+            errorMessage = "Failed to load data"
+        }
+        
+        isLoading = false
+    }
+    
+    func refresh() async {
+        await fetchData()
+    }
+    
+    private func fetchTrendingEventDetails(ids: [Int]) async {
+        var details: [EventListDto] = []
+        
+        for id in ids {
+            guard !Task.isCancelled else {
+                return
+            }
+            
+            do {
+                let detail = try await eventService.getEventDetails(id: id)
+                details.append(detail)
+            } catch is CancellationError {
+                return
+            } catch {
+                continue
+            }
+        }
+        
+        guard !Task.isCancelled else {
+            return
+        }
+        
+        self.trendingEvents = details
+    }
+    
+    private func parseEventDate(_ dateString: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.timeZone = TimeZone.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: dateString)
+    }
+}

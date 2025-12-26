@@ -7,15 +7,19 @@
 
 import Foundation
 
-struct RegisterRequest: Codable {
+struct RegisterRequest: Encodable {
+    let email: String
+    let password: String
     let firstName: String
     let lastName: String
-    let email: String
     let phoneNumber: String
-    let otpCode: String
-    let department: String
-    let password: String
-    let agree: Bool
+    let departmentId: Int
+}
+
+struct DepartmentDto: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let description: String
 }
 
 enum Department: String, Codable, CaseIterable {
